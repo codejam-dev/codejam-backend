@@ -1,7 +1,7 @@
 package com.codejam.auth.service;
 
-import com.codejam.dto.request.OauthExchangeRequest;
-import com.codejam.dto.response.OAuthCodeResponse;
+import com.codejam.auth.dto.request.OauthExchangeRequest;
+import com.codejam.auth.dto.response.OAuthCodeResponse;
 import com.codejam.commons.exception.CustomException;
 import com.codejam.commons.util.Constants;
 import com.codejam.commons.util.ObjectUtil;
