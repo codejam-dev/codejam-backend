@@ -4,7 +4,7 @@ import com.codejam.model.User;
 import com.codejam.repository.UserRepository;
 import com.codejam.service.JwtService;
 import com.codejam.service.OAuthCodeService;
-import com.codejam.util.Constants;
+import com.codejam.commons.util.Constants;
 import com.codejam.commons.util.ObjectUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
