@@ -1,0 +1,75 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  oauth:
+    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:3000/auth/success}
+    failure-redirect: ${OAUTH_FAILURE_REDIRECT:http://localhost:3000/auth?error=oauth_failed}
+
+spring:
+  application:
+    name: codejam
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
+    username: ${SPRING_DATASOURCE_USERNAME:codejam}
+    password: ${SPRING_DATASOURCE_PASSWORD:codejam123}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: profile,email
+            redirect-uri: "${GATEWAY_BASE_URL:http://localhost:8080}/auth/oauth2/callback/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://www.googleapis.com/oauth2/v4/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+jwt:
+  secret: ${JWT_SECRET:codejam-secret-key-change-in-production-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.codejam: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: ERROR
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){faint} %clr(%5p) %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
