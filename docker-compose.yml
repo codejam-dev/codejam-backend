@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  codejam-postgres:
+    image: postgres:15
+    container_name: codejam-postgres
+    environment:
+      POSTGRES_DB: codejam_db
+      POSTGRES_USER: codejam
+      POSTGRES_PASSWORD: codejam123
+    volumes:
+      - codejam-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - codejam-network
+
+  codejam-redis:
+    image: redis:7-alpine
+    container_name: codejam-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - codejam-redis-data:/data
+    networks:
+      - codejam-network
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    depends_on:
+      - codejam-postgres
+      - codejam-redis
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://codejam-postgres:5432/codejam_db
+      SPRING_DATASOURCE_USERNAME: codejam
+      SPRING_DATASOURCE_PASSWORD: codejam123
+      REDIS_HOST: codejam-redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-codejam-secret-key-change-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "8081:8081"
+    networks:
+      - codejam-network
+
+volumes:
+  codejam-postgres-data:
+  codejam-redis-data:
+
+networks:
+  codejam-network:
+    driver: bridge
+
