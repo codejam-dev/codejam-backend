@@ -1,13 +1,16 @@
-package com.codejam;
+package com.codejam.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
-public class CodeJamApplication {
+@SpringBootApplication(scanBasePackages = {
+    "com.codejam.auth",
+    "com.codejam.commons"
+})
+public class AuthServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CodeJamApplication.class, args);
+        SpringApplication.run(AuthServiceApplication.class, args);
     }
 
 }

@@ -1,11 +1,11 @@
 package com.codejam.auth.controller;
 
 import com.codejam.commons.dto.BaseResponse;
-import com.codejam.dto.request.LoginRequest;
-import com.codejam.dto.request.OauthExchangeRequest;
-import com.codejam.dto.request.RegisterRequest;
-import com.codejam.dto.response.AuthResponse;
-import com.codejam.dto.response.OAuthCodeResponse;
+import com.codejam.auth.dto.request.LoginRequest;
+import com.codejam.auth.dto.request.OauthExchangeRequest;
+import com.codejam.auth.dto.request.RegisterRequest;
+import com.codejam.auth.dto.response.AuthResponse;
+import com.codejam.auth.dto.response.OAuthCodeResponse;
 import com.codejam.service.AuthService;
 import com.codejam.service.OAuthCodeService;
 import jakarta.validation.Valid;

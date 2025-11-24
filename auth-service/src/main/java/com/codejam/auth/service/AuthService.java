@@ -1,8 +1,8 @@
 package com.codejam.auth.service;
 
-import com.codejam.dto.request.LoginRequest;
-import com.codejam.dto.request.RegisterRequest;
-import com.codejam.dto.response.AuthResponse;
+import com.codejam.auth.dto.request.LoginRequest;
+import com.codejam.auth.dto.request.RegisterRequest;
+import com.codejam.auth.dto.response.AuthResponse;
 import com.codejam.commons.dto.BaseResponse;
 import com.codejam.commons.exception.CustomException;
 import com.codejam.model.User;
