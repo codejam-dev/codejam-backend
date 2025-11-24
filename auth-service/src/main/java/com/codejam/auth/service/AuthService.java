@@ -7,7 +7,7 @@ import com.codejam.commons.dto.BaseResponse;
 import com.codejam.commons.exception.CustomException;
 import com.codejam.model.User;
 import com.codejam.repository.UserRepository;
-import com.codejam.util.Constants;
+import com.codejam.commons.util.Constants;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,6 +1,6 @@
 package com.codejam.auth.config;
 
-import com.codejam.util.Constants;
+import com.codejam.commons.util.Constants;
 import com.codejam.commons.util.ObjectUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;

@@ -3,7 +3,7 @@ package com.codejam.auth.service;
 import com.codejam.dto.request.OauthExchangeRequest;
 import com.codejam.dto.response.OAuthCodeResponse;
 import com.codejam.commons.exception.CustomException;
-import com.codejam.util.Constants;
+import com.codejam.commons.util.Constants;
 import com.codejam.commons.util.ObjectUtil;
 import com.codejam.commons.util.RedisKeyUtil;
 import com.codejam.commons.util.RedisService;
@@ -23,6 +23,7 @@ import java.util.Base64;
 public class OAuthCodeService {
 
     private final RedisService redisService;
+    private final RedisKeyUtil redisKeyUtil;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public String generateCode(
@@ -60,7 +61,7 @@ public class OAuthCodeService {
                 .codeChallenge(codeChallenge)
                 .build();
 
-        String key = RedisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, code);
+        String key = redisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, code);
         redisService.set(key, oauthData.toJson(), Constants.OAUTH_CODE_EXPIRY);
         log.info("OAuth code generated successfully. User: {}, Code expires in {} seconds", email, Constants.OAUTH_CODE_EXPIRY);
         return code;
@@ -78,7 +79,7 @@ public class OAuthCodeService {
 
         log.info("OAuth code exchange request received");
 
-        String key = RedisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, request.getCode());
+        String key = redisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, request.getCode());
         String storedData = redisService.get(key);
 
         if (ObjectUtil.isNullOrEmpty(storedData)) {
