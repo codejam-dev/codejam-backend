@@ -16,24 +16,25 @@ Config Server is a microservice (like auth-service and api-gateway) that central
   - Private repository - only team members can see
   - Production configs are stored here
   
-- **Local config-repo**: `config-server/src/main/resources/config-repo/`
+- **Local config-repo**: `config-repo/` (at root level, same as config-server/)
   - For local development only (native mode)
   - Not used in production
   - Allows developers to work without Git access
+  - Located at project root for easy access and editing
 
 ## Two Profiles: NATIVE and PROD
 
 ### 1. NATIVE Profile (`SPRING_PROFILES_ACTIVE=native`)
 
 **Config Server Behavior:**
-- Reads configs from **local files** in `config-server/src/main/resources/config-repo/`
+- Reads configs from **local files** in `config-repo/` (at root level)
 - No Git needed
 - Fast startup, no network required
 - Perfect for local development
 
 **Config Files Location:**
 ```
-config-server/src/main/resources/config-repo/
+config-repo/
 ├── auth-service/
 │   └── auth-service.properties
 └── api-gateway/
@@ -187,7 +188,7 @@ jwt.secret=default-secret  # Used if env var not set
 
 ## Summary
 
-- **NATIVE**: Config Server reads from local `config-repo/` directory (classpath)
+- **NATIVE**: Config Server reads from local `config-repo/` directory (file system, at root level)
 - **PROD**: Config Server reads from Git repository
 - **Services**: Connect to Config Server to get their configs
 - **Refresh**: Services can refresh configs without restart via `/actuator/refresh`
