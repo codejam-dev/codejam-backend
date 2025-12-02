@@ -1,9 +1,10 @@
 package com.codejam.auth.handler;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
@@ -13,10 +14,10 @@ import java.io.IOException;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
-    @Value("${app.oauth.failure-redirect}")
-    private String redirectUrl;
+    private final MicroserviceConfig microserviceConfig;
 
     @Override
     public void onAuthenticationFailure(
@@ -26,7 +27,7 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
 
         log.error("OAuth authentication failed: {}", exception.getMessage());
         
-        String targetUrl = UriComponentsBuilder.fromUriString(redirectUrl)
+        String targetUrl = UriComponentsBuilder.fromUriString(microserviceConfig.getOauth().getFailureRedirect())
                 .queryParam("error", exception.getLocalizedMessage())
                 .build().toUriString();
 

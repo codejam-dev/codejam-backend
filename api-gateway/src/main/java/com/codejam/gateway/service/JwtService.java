@@ -1,10 +1,11 @@
 package com.codejam.gateway.service;
 
+import com.codejam.gateway.config.MicroserviceConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -12,10 +13,10 @@ import java.util.Date;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+    private final MicroserviceConfig microserviceConfig;
 
     public String extractUserId(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -67,7 +68,7 @@ public class JwtService {
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtSecret());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

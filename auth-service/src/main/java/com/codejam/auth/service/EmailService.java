@@ -1,9 +1,10 @@
 package com.codejam.auth.service;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -11,17 +12,11 @@ import org.springframework.stereotype.Service;
 import java.io.UnsupportedEncodingException;
 
 @Service
+@RequiredArgsConstructor
 public class EmailService {
 
     private final JavaMailSender mailSender;
-
-    // Read from application.yml / application.properties
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
+    private final MicroserviceConfig microserviceConfig;
 
     public void sendOtpVerificationEmail(String toEmail, String otp) {
         try {
@@ -29,7 +24,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             // Set friendly sender
-            helper.setFrom(new InternetAddress(fromEmail, "CodeJam"));
+            helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
 
             // Set recipient
             helper.setTo(toEmail);

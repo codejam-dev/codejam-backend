@@ -1,5 +1,6 @@
 package com.codejam.auth.handler;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.model.User;
 import com.codejam.auth.repository.UserRepository;
 import com.codejam.auth.service.JwtService;
@@ -9,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -29,9 +29,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final OAuthCodeService oAuthCodeService;
-
-    @Value("${app.oauth.success-redirect}")
-    private String successRedirectUrl;
+    private final MicroserviceConfig microserviceConfig;
 
     @Override
     public void onAuthenticationSuccess(
@@ -43,7 +41,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
         if (email == null) {
             log.warn("OAuth authentication succeeded but email is missing");
-            response.sendRedirect(successRedirectUrl + "?error=email_not_found");
+            response.sendRedirect(microserviceConfig.getOauth().getSuccessRedirect() + "?error=email_not_found");
             return;
         }
 
@@ -58,7 +56,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
         if(ObjectUtil.isNullOrEmpty(codeChallenge)) {
             log.error("PKCE code_challenge missing in session for user: {}", email);
-            response.sendRedirect(successRedirectUrl + "?error=pkce_required");
+            response.sendRedirect(microserviceConfig.getOauth().getSuccessRedirect() + "?error=pkce_required");
             return;
         }
 
@@ -93,7 +91,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         request.getSession().removeAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE);
         log.debug("OAuth code generated successfully. Redirecting to frontend. User: {}", normalizedEmail);
         
-        String targetUrl = UriComponentsBuilder.fromUriString(successRedirectUrl)
+        String targetUrl = UriComponentsBuilder.fromUriString(microserviceConfig.getOauth().getSuccessRedirect())
                 .queryParam("code", code)
                 .build().toUriString();
         

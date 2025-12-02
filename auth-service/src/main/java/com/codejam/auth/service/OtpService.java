@@ -1,12 +1,11 @@
 package com.codejam.auth.service;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.dto.request.ValidateOtpRequest;
 import com.codejam.commons.util.ObjectUtil;
 import com.codejam.commons.util.RedisService;
 import com.codejam.commons.util.proxyUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -15,7 +14,6 @@ import java.util.UUID;
 import static com.codejam.auth.util.Constants.OTP_REDIS_EXPIRY;
 
 @Service
-@RefreshScope  // Enable dynamic configuration refresh
 @RequiredArgsConstructor
 public class OtpService {
 
@@ -23,22 +21,21 @@ public class OtpService {
     private final proxyUtils proxyUtils;
     private final RedisService redisService;
     private final EmailService emailService;
-
-    // Dynamic OTP flag from Config Server (can be changed without restart)
-    @Value("${app.otp.enable-dynamic:false}")
-    private boolean enableDynamicOtp;
+    private final MicroserviceConfig microserviceConfig;
 
     public String generateAndSendOtp(String email) {
         String otp;
         String transactionId;
 
-        if (enableDynamicOtp) {
+        if (microserviceConfig.getOtp().isEnableDynamic()) {
             otp = String.valueOf(100000 + secureRandom.nextInt(900000));
             transactionId = UUID.randomUUID().toString();
             emailService.sendOtpVerificationEmail(email, otp);
         } else {
-            otp = "123456";
-            transactionId = "TransactionID";
+            otp = microserviceConfig.getOtp().getTestValue();
+            transactionId = microserviceConfig.getOtp().getTestTransactionId() != null 
+                    ? microserviceConfig.getOtp().getTestTransactionId() 
+                    : "TransactionID";
             System.out.println("🧪 TEST MODE: OTP for " + email + " is " + otp + " (email not sent)");
         }
 
