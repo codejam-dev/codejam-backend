@@ -32,3 +32,6 @@ docker-compose.override.yml
 
 # Local development configuration (not committed)
 **/application-dev.yml
+
+# Config-repo (separate Git repository, not part of codejam-backend)
+config-server/src/main/resources/config-repo/
