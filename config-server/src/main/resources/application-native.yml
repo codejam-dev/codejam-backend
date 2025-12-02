@@ -1,0 +1,35 @@
+# NATIVE Profile - Uses File System Config (for Dev/Local)
+# This profile reads configurations from the local file system
+# Location: config-server/src/main/resources/config-repo/
+#
+# To use this profile:
+# SPRING_PROFILES_ACTIVE=native
+#
+# Uses file:// path so changes are picked up immediately without recompiling
+# Can be overridden with CONFIG_REPO_PATH environment variable
+
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          # Use file system path for local dev (no recompilation needed)
+          # Reads directly from source directory - changes picked up immediately
+          # Default: relative to project root (when run from codejam-backend/)
+          # Override with: CONFIG_REPO_PATH=file:///absolute/path/to/config-repo/{application}
+          search-locations: ${CONFIG_REPO_PATH:file:${user.dir}/config-server/src/main/resources/config-repo/{application}}
+
+# Disable Git-related health checks for native mode
+management:
+  endpoint:
+    health:
+      config:
+        enabled: false  # Disable Git health check in native mode
+  info:
+    git:
+      enabled: false  # Disable Git info in native mode
+
+logging:
+  level:
+    org.springframework.cloud.config.server: DEBUG
+    org.springframework.cloud.config.server.native: DEBUG

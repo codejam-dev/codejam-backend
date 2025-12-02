@@ -21,9 +21,9 @@ Config Server is a microservice (like auth-service and api-gateway) that central
   - Not used in production
   - Allows developers to work without Git access
 
-## Two Profiles: DEV and PROD
+## Two Profiles: NATIVE and PROD
 
-### 1. DEV Profile (`SPRING_PROFILES_ACTIVE=dev`)
+### 1. NATIVE Profile (`SPRING_PROFILES_ACTIVE=native`)
 
 **Config Server Behavior:**
 - Reads configs from **local files** in `config-server/src/main/resources/config-repo/`
@@ -62,8 +62,8 @@ Git Repository: https://github.com/codejam-dev/config-repo.git
 ### Step 1: Config Server Starts
 
 ```bash
-# DEV mode (local files)
-SPRING_PROFILES_ACTIVE=dev java -jar config-server.jar
+# NATIVE mode (local files - for dev)
+SPRING_PROFILES_ACTIVE=native java -jar config-server.jar
 
 # PROD mode (Git repo)
 SPRING_PROFILES_ACTIVE=prod \
@@ -118,11 +118,11 @@ Config Server serves configs based on:
 
 ## Complete Flow Example
 
-### DEV Environment (Local Development)
+### NATIVE Environment (Local Development)
 
 ```
 1. Start Config Server:
-   SPRING_PROFILES_ACTIVE=dev → Reads from config-repo/ directory
+   SPRING_PROFILES_ACTIVE=native → Reads from config-repo/ directory
 
 2. Start Auth Service:
    - Connects to Config Server (http://localhost:8888)
@@ -187,7 +187,7 @@ jwt.secret=default-secret  # Used if env var not set
 
 ## Summary
 
-- **DEV**: Config Server reads from local `config-repo/` directory
+- **NATIVE**: Config Server reads from local `config-repo/` directory (classpath)
 - **PROD**: Config Server reads from Git repository
 - **Services**: Connect to Config Server to get their configs
 - **Refresh**: Services can refresh configs without restart via `/actuator/refresh`

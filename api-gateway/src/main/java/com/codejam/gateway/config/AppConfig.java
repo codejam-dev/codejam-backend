@@ -1,5 +1,6 @@
 package com.codejam.gateway.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -11,7 +12,10 @@ import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@RequiredArgsConstructor
 public class AppConfig {
+
+    private final MicroserviceConfig microserviceConfig;
 
     @Bean
     public RestTemplate restTemplate() {
@@ -21,10 +25,12 @@ public class AppConfig {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:3000",
-                "http://localhost:5173"
-        ));
+        
+        // Get CORS origins from config (comma-separated string)
+        String allowedOrigins = microserviceConfig.getCors().getAllowedOrigins();
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        corsConfig.setAllowedOriginPatterns(origins);
+        
         corsConfig.setMaxAge(3600L);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         corsConfig.setAllowedHeaders(List.of("*"));

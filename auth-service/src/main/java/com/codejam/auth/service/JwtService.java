@@ -1,11 +1,12 @@
 package com.codejam.auth.service;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -16,13 +17,10 @@ import java.util.function.Function;
 import static io.jsonwebtoken.Jwts.builder;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    private final MicroserviceConfig microserviceConfig;
 
     private static final long TEMP_TOKEN_EXPIRATION = 15 * 60 * 1000;
 
@@ -44,7 +42,7 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        return buildToken(user, jwtExpiration);
+        return buildToken(user, microserviceConfig.getJwtExpiration());
     }
 
     public String generateTempToken(User user) {
@@ -52,7 +50,7 @@ public class JwtService {
     }
 
     public String generateFullToken(User user) {
-        return buildToken(user, jwtExpiration);
+        return buildToken(user, microserviceConfig.getJwtExpiration());
     }
 
     private String buildToken(User user, long expiration) {
@@ -103,7 +101,7 @@ public class JwtService {
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtSecret());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
