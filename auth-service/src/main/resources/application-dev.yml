@@ -1,12 +1,77 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+# JWT Configuration
+jwt:
+  secret: Y29kZWphbS1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9uLXRoaXMtaXMtYS1sb25nLXNlY3VyZS1rZXktZm9yLWp3dC10b2tlbnM=
+  expiration: 86400000
+
+# Application Configuration
+app:
+  frontend-url: http://localhost:3000
+  oauth:
+    success-redirect: http://localhost:3000/auth/callback
+    failure-redirect: http://localhost:3000/login?error=oauth_failed
+  otp:
+    enable-dynamic: false
+
 spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/codejam_db
+    username: codejam
+    password: codejam123
+    driver-class-name: org.postgresql.Driver
+
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        default_schema: auth
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 1058936213719-k3rj377oj7khtq7029n2soiclc8ips0a.apps.googleusercontent.com
+            client-secret: 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
+            scope: profile,email
+            redirect-uri: "http://localhost:8080/v1/api/auth/oauth2/callback/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://www.googleapis.com/oauth2/v4/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+  config:
+    import: "optional:configserver:http://localhost:8888"
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: anonymousperson6863@gmail.com
+    password: "ctvg vulx iziu qpyz"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 logging:
   level:
     com.codejam: DEBUG
     org.springframework.web: DEBUG
-

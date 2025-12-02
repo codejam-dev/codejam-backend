@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+spring:
+  application:
+    name: api-gateway
+  # Config Server import (Spring Boot 3.x)
+  # Uses optional: so it won't fail if config server is unavailable
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  # Gateway routes - kept here as they're complex nested structures
+  # Other configs come from Config Server
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: ${GATEWAY_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+      routes:
+        - id: auth-service
+          uri: http://${AUTH_SERVICE_URL:localhost}:${AUTH_SERVICE_PORT:8081}
+          predicates:
+            - Path=/v1/api/auth/**
+          filters:
+            - StripPrefix=2
+  # Disable static resource handling
+  webflux:
+    static-path-pattern: /nonexistent/**
+  web:
+    resources:
+      add-mappings: false

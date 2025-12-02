@@ -5,9 +5,9 @@ services:
     image: postgres:15
     container_name: codejam-postgres
     environment:
-      POSTGRES_DB: codejam_db
-      POSTGRES_USER: codejam
-      POSTGRES_PASSWORD: codejam123
+      POSTGRES_DB: ${POSTGRES_DB:codejam_db}
+      POSTGRES_USER: ${POSTGRES_USER:codejam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - codejam-postgres-data:/var/lib/postgresql/data
     ports:
@@ -33,11 +33,11 @@ services:
       - codejam-redis
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://codejam-postgres:5432/codejam_db
-      SPRING_DATASOURCE_USERNAME: codejam
-      SPRING_DATASOURCE_PASSWORD: codejam123
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       REDIS_HOST: codejam-redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-codejam-secret-key-change-in-production}
+      JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     ports:

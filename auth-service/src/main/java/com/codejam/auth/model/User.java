@@ -1,6 +1,7 @@
 package com.codejam.auth.model;
 
-import com.codejam.util.AuthProvider;
+import com.codejam.auth.util.AuthProvider;
+import com.codejam.auth.dto.request.RegisterRequest;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", schema = "auth")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -50,15 +51,31 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        if (userId == null) {
-            userId = UUID.randomUUID().toString();
-        }
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
+
+
+    public User(String name, String email, String password, boolean enabled) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.userId = UUID.randomUUID().toString();
+        this.enabled = enabled;
+    }
+
+    public User(RegisterRequest request,  String password, boolean enabled) {
+        this.name = request.getName();
+        this.email = request.getEmail();
+        this.password = password;
+        this.userId = UUID.randomUUID().toString();
+        this.enabled = enabled;
+    }
+
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
 }

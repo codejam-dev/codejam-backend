@@ -1,11 +1,10 @@
 package com.codejam.auth.service;
 
+import com.codejam.auth.util.AuthProvider;
+import com.codejam.auth.model.User;
+import com.codejam.auth.repository.UserRepository;
 import com.codejam.commons.exception.CustomException;
-import com.codejam.model.User;
-import com.codejam.repository.UserRepository;
-import com.codejam.util.AuthProvider;
 import com.codejam.commons.util.ObjectUtil;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -15,19 +14,24 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
+
 
 @Service
-@RequiredArgsConstructor
 public class GoogleAuthService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-    private final WebClient webClient = WebClient.builder().build();
+    private final WebClient webClient;
+
+    public GoogleAuthService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+        this.webClient = WebClient.builder().build();
+    }
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
+
         return processOAuth2User(registrationId, oAuth2User);
     }
 
@@ -42,32 +46,45 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
             throw new CustomException("GOOGLE_AUTH", "Email not found from OAuth2 provider", HttpStatus.BAD_REQUEST);
         }
 
+        String normalizedEmail = email.trim().toLowerCase();
         AuthProvider authProvider = AuthProvider.valueOf(registrationId.toUpperCase());
-        Optional<User> optionalUser = userRepository.findByEmail(email);
+        Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
         User user;
 
         if (optionalUser.isPresent()) {
             user = optionalUser.get();
-            
+
+            // Check if user is trying to login with different provider
+            // If provider is LOCAL and user has password, prevent OAuth login
             if (user.getProvider() != null && !user.getProvider().equals(authProvider)) {
                 throw new CustomException("PROVIDER_MISMATCH",
-                        "Looks like you're signed up with " + user.getProvider() +
-                        " account. Please use your " + user.getProvider() +
-                        " account to login.", HttpStatus.BAD_REQUEST);
+                        "This email is registered using " +
+                        (user.getProvider() == AuthProvider.LOCAL ? "email/password" : user.getProvider().toString()) +
+                        ". Please use your " +
+                        (user.getProvider() == AuthProvider.LOCAL ? "email and password" : user.getProvider().toString() + " account") +
+                        " to login.", HttpStatus.BAD_REQUEST);
             }
 
-            if(profileImage != null){
-                byte[] image = webClient.get()
-                        .uri(profileImage)
-                        .retrieve()
-                        .bodyToMono(byte[].class)
-                        .block();
+            if(profileImage!=null){
+                try {
+                    // Fetch and update profile image
+                    byte[] image = webClient.get()
+                            .uri(profileImage)
+                            .retrieve()
+                            .bodyToMono(byte[].class)
+                            .block();
 
-                if(image != null){
-                    user.setProfileImage(image);
+                    if(image!=null){
+                        user.setProfileImage(image);
+                    }
+                } catch (Exception e) {
+                    // Log error but don't fail the authentication
+                    // Profile image is optional and can be fetched later
                 }
             }
 
+
+            // Update existing user info
             user.setName(firstName + " " + lastName);
             user.setProfileImageUrl(profileImage);
             user.setProviderId(providerId);
@@ -75,10 +92,11 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
             user.setEnabled(true);
             userRepository.save(user);
         } else {
+            // Create new user
             user = User.builder()
-                    .userId(UUID.randomUUID().toString())
+                    .userId(java.util.UUID.randomUUID().toString())
                     .name(firstName + " " + lastName)
-                    .email(email)
+                    .email(normalizedEmail)
                     .providerId(providerId)
                     .provider(authProvider)
                     .profileImageUrl(profileImage)
@@ -89,5 +107,5 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
         
         return oAuth2User;
     }
-}
 
+}

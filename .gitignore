@@ -25,3 +25,10 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Local development configuration (not committed)
+**/application-dev.yml
