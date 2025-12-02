@@ -1,0 +1,54 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    config:
+      server:
+        # PROD MODE: Uses Git repository (when SPRING_PROFILES_ACTIVE=prod or not set to dev)
+        # DEV MODE: Overridden by application-dev.yml (uses native mode)
+        git:
+          uri: ${CONFIG_REPO_URL:https://github.com/codejam-dev/config-repo.git}
+          default-label: main
+          clone-on-start: true
+          force-pull: true
+          timeout: 10
+          skip-ssl-validation: false
+          search-paths: '{application}'
+          username: ${GIT_USERNAME:}
+          password: ${GIT_PASSWORD:}
+
+# Webhook configuration for automatic refresh
+webhook:
+  secret: ${WEBHOOK_SECRET:}
+
+services:
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  api-gateway:
+    url: ${API_GATEWAY_URL:http://localhost:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh,env,configprops
+  endpoint:
+    health:
+      show-details: always
+      config:
+        enabled: true
+  info:
+    git:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.config: INFO
+    org.springframework.cloud.config.server: DEBUG
+
