@@ -21,7 +21,7 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false, length = 36)
-    private String userId = UUID.randomUUID().toString();
+    private String userId;
 
     @Column(length = 500)
     private String name;
@@ -45,7 +45,7 @@ public class User {
     @Column(name = "profile_image", columnDefinition = "BYTEA")
     private byte[] profileImage;
 
-    private boolean enabled = true;
+    private boolean enabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
