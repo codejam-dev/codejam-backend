@@ -3,10 +3,9 @@ package com.codejam.auth.service;
 import com.codejam.auth.dto.request.OauthExchangeRequest;
 import com.codejam.auth.dto.response.OAuthCodeResponse;
 import com.codejam.commons.exception.CustomException;
-import com.codejam.commons.util.Constants;
 import com.codejam.commons.util.ObjectUtil;
-import com.codejam.commons.util.RedisKeyUtil;
 import com.codejam.commons.util.RedisService;
+import com.codejam.commons.util.proxyUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,15 +16,37 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+import static com.codejam.auth.util.Constants.*;
+
+/**
+ * Production-grade OAuth Code Service with mandatory PKCE validation.
+ * SECURITY FEATURES:
+ * - Single-use codes (deleted after exchange)
+ * - 5-minute expiration
+ * - Mandatory PKCE validation (S256 only)
+ * - Secure random code generation
+ * - Cryptographic challenge verification
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OAuthCodeService {
 
     private final RedisService redisService;
-    private final RedisKeyUtil redisKeyUtil;
-    private final SecureRandom secureRandom = new SecureRandom();
-
+    private final SecureRandom secureRandom;
+    private final proxyUtils proxyUtils;
+    /**
+     * Generates a secure random code and stores OAuth data in Redis with PKCE challenge.
+     *
+     * @param token JWT token
+     * @param email User email
+     * @param name User name
+     * @param userId User ID
+     * @param avatar Profile image URL (optional)
+     * @param codeChallenge PKCE code challenge (SHA256 hash of code_verifier) - REQUIRED
+     * @return OAuth code that can be exchanged for token
+     * @throws CustomException if codeChallenge is missing (PKCE is mandatory)
+     */
     public String generateCode(
             String token,
             String email,
@@ -61,12 +82,20 @@ public class OAuthCodeService {
                 .codeChallenge(codeChallenge)
                 .build();
 
-        String key = redisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, code);
-        redisService.set(key, oauthData.toJson(), Constants.OAUTH_CODE_EXPIRY);
-        log.info("OAuth code generated successfully. User: {}, Code expires in {} seconds", email, Constants.OAUTH_CODE_EXPIRY);
+        String key = proxyUtils.generateRedisKey(OAUTH_CODE_REDIS_PREFIX, code);
+        redisService.set(key, oauthData.toJson(), OAUTH_CODE_EXPIRY);
+        log.info("OAuth code generated successfully. User: {}, Code expires in {} seconds", email, OAUTH_CODE_EXPIRY);
         return code;
     }
 
+    /**
+     * Exchanges an OAuth code for user data and token.
+     * MANDATORY PKCE validation using S256 (SHA256).
+     *
+     * @param request PKCE code verifier (plain text, sent by frontend) - REQUIRED
+     * @return OAuthCodeResponse with token and user data
+     * @throws CustomException if code is invalid, expired, or PKCE validation fails
+     */
     public OAuthCodeResponse exchangeCode(OauthExchangeRequest request) {
 
         if (!isValidCodeVerifier(request.getCodeVerifier())) {
@@ -79,7 +108,7 @@ public class OAuthCodeService {
 
         log.info("OAuth code exchange request received");
 
-        String key = redisKeyUtil.generateRedisKey(Constants.OAUTH_CODE_REDIS_PREFIX, request.getCode());
+        String key = proxyUtils.generateRedisKey(OAUTH_CODE_REDIS_PREFIX, request.getCode());
         String storedData = redisService.get(key);
 
         if (ObjectUtil.isNullOrEmpty(storedData)) {
@@ -120,30 +149,56 @@ public class OAuthCodeService {
         return oauthData;
     }
 
+    /**
+     * Computes PKCE code challenge from code verifier using S256 (SHA256).
+     * ALGORITHM (RFC 7636):
+     * 1. Hash code_verifier using SHA-256
+     * 2. Encode hash as Base64 URL-safe (no padding)
+     *
+     * @param codeVerifier The plain text code verifier (43-128 characters)
+     * @return Base64 URL-safe encoded SHA256 hash (code challenge)
+     * @throws RuntimeException if hashing fails
+     */
     private String computeCodeChallenge(String codeVerifier) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.UTF_8));
+
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (Exception e) {
             throw new RuntimeException("Failed to compute code challenge", e);
         }
     }
 
+    /**
+     * Validates code_challenge format according to RFC 7636.
+     * - Must be Base64 URL-safe encoded
+     * - Length: 43-128 characters
+     */
     private boolean isValidCodeChallenge(String codeChallenge) {
         if (codeChallenge == null || codeChallenge.length() < 43 || codeChallenge.length() > 128) {
             return false;
         }
+        // Base64 URL-safe: A-Z, a-z, 0-9, -, _
         return codeChallenge.matches("^[A-Za-z0-9_-]+$");
     }
 
+    /**
+     * Validates code_verifier format according to RFC 7636.
+     * - Must be URL-safe
+     * - Length: 43-128 characters
+     */
     private boolean isValidCodeVerifier(String codeVerifier) {
         if (codeVerifier == null || codeVerifier.length() < 43 || codeVerifier.length() > 128) {
             return false;
         }
+        // URL-safe characters: A-Z, a-z, 0-9, -, ., _, ~
         return codeVerifier.matches("^[A-Za-z0-9._~-]+$");
     }
 
+    /**
+     * Generates a secure random code (32 characters, alphanumeric).
+     */
     private String generateSecureCode() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder code = new StringBuilder(32);
@@ -152,5 +207,5 @@ public class OAuthCodeService {
         }
         return code.toString();
     }
-}
 
+}

@@ -8,6 +8,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Response object containing OAuth authentication data.
+ * Used for storing and retrieving OAuth callback data from Redis.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,6 +27,9 @@ public class OAuthCodeResponse {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Converts this object to JSON string for Redis storage.
+     */
     public String toJson() {
         try {
             return objectMapper.writeValueAsString(this);
@@ -31,6 +38,9 @@ public class OAuthCodeResponse {
         }
     }
 
+    /**
+     * Creates OAuthCodeResponse from JSON string.
+     */
     public static OAuthCodeResponse fromJson(String json) {
         try {
             return objectMapper.readValue(json, OAuthCodeResponse.class);
@@ -39,4 +49,3 @@ public class OAuthCodeResponse {
         }
     }
 }
-

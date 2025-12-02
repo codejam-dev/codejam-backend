@@ -1,10 +1,9 @@
 package com.codejam.auth.handler;
 
-import com.codejam.model.User;
-import com.codejam.repository.UserRepository;
-import com.codejam.service.JwtService;
-import com.codejam.service.OAuthCodeService;
-import com.codejam.commons.util.Constants;
+import com.codejam.auth.model.User;
+import com.codejam.auth.repository.UserRepository;
+import com.codejam.auth.service.JwtService;
+import com.codejam.auth.service.OAuthCodeService;
 import com.codejam.commons.util.ObjectUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,8 +19,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.util.Base64;
 
-@Component
+import static com.codejam.auth.util.Constants.SESSION_ATTRIBUTE_CODE_CHALLENGE;
+
 @Slf4j
+@Component
 @RequiredArgsConstructor
 public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
@@ -29,7 +30,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final UserRepository userRepository;
     private final OAuthCodeService oAuthCodeService;
 
-    @Value("${app.oauth.success-redirect:http://localhost:3000/auth/success}")
+    @Value("${app.oauth.success-redirect}")
     private String successRedirectUrl;
 
     @Override
@@ -46,13 +47,14 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             return;
         }
 
-        log.info("OAuth authentication successful for email: {}", email);
+        String normalizedEmail = email.trim().toLowerCase();
+        log.debug("OAuth authentication successful for email: {}", normalizedEmail);
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth authentication"));
 
         String token = jwtService.generateToken(user);
-        String codeChallenge = (String) request.getSession().getAttribute(Constants.SESSION_ATTRIBUTE_CODE_CHALLENGE);
+        String codeChallenge = (String) request.getSession().getAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE);
 
         if(ObjectUtil.isNullOrEmpty(codeChallenge)) {
             log.error("PKCE code_challenge missing in session for user: {}", email);
@@ -65,12 +67,16 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             userRepository.save(user);
         }
 
+        // Determine avatar: prefer base64 data URL from DB if available, else use external URL
         String avatar = "";
         if (user.getProfileImage() != null && user.getProfileImage().length > 0) {
+            // User has image stored in DB, convert to base64 data URL
             String base64Image = Base64.getEncoder().encodeToString(user.getProfileImage());
+            // Default to JPEG, could be enhanced to detect actual content type
             avatar = "data:image/jpeg;base64," + base64Image;
-            log.debug("Using base64 profile image from DB for user: {}", user.getEmail());
+            log.debug("Using base64 profile image from DB for user: {}, size: {} bytes", user.getEmail(), user.getProfileImage().length);
         } else if (!ObjectUtil.isNullOrEmpty(user.getProfileImageUrl())) {
+            // Fallback to external URL if no backend image
             avatar = user.getProfileImageUrl();
             log.debug("Using external profile image URL for user: {}", user.getEmail());
         }
@@ -84,8 +90,8 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
                 codeChallenge
         );
 
-        request.getSession().removeAttribute(Constants.SESSION_ATTRIBUTE_CODE_CHALLENGE);
-        log.info("OAuth code generated successfully. Redirecting to frontend. User: {}", email);
+        request.getSession().removeAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE);
+        log.debug("OAuth code generated successfully. Redirecting to frontend. User: {}", normalizedEmail);
         
         String targetUrl = UriComponentsBuilder.fromUriString(successRedirectUrl)
                 .queryParam("code", code)
@@ -94,4 +100,3 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }
-

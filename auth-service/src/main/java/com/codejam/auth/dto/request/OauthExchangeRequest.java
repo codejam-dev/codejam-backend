@@ -14,4 +14,3 @@ public class OauthExchangeRequest {
     @NotBlank(message = "Code verifier is required")
     public String codeVerifier;
 }
-

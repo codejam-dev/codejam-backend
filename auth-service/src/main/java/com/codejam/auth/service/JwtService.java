@@ -1,6 +1,6 @@
 package com.codejam.auth.service;
 
-import com.codejam.model.User;
+import com.codejam.auth.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -24,13 +24,18 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
+    private static final long TEMP_TOKEN_EXPIRATION = 15 * 60 * 1000;
+
+    public String extractEmail(String token) {
+        return extractClaim(token, claims -> claims.get("email", String.class));
+    }
+
     public String extractUserId(String token) {
         return extractClaim(token, Claims::getSubject);
     }
-    
-    public String extractEmail(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("email", String.class);
+
+    public Boolean extractIsEnabled(String token) {
+        return extractClaim(token, claims -> claims.get("isEnabled", Boolean.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -42,15 +47,24 @@ public class JwtService {
         return buildToken(user, jwtExpiration);
     }
 
+    public String generateTempToken(User user) {
+        return buildToken(user, TEMP_TOKEN_EXPIRATION);
+    }
+
+    public String generateFullToken(User user) {
+        return buildToken(user, jwtExpiration);
+    }
+
     private String buildToken(User user, long expiration) {
         Map<String, Object> claims = Map.of(
+                "userId", user.getUserId(),
                 "email", user.getEmail(),
                 "name", user.getName(),
                 "isEnabled", user.isEnabled()
         );
         return builder()
                 .claims(claims)
-                .subject(user.getUserId())
+                .subject(user.getEmail())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey())
@@ -58,10 +72,11 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, User user) {
-        final String userId = extractUserId(token);
-        return (userId.equals(user.getUserId())) && !isTokenExpired(token);
+        final String email = extractEmail(token);
+        return (email.equals(user.getEmail())) && !isTokenExpired(token);
     }
 
+    // Simple token validation - checks if token is valid (not expired and properly signed)
     public boolean isTokenValid(String token) {
         try {
             return !isTokenExpired(token);
@@ -92,4 +107,3 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
-

@@ -15,7 +15,7 @@ import java.io.IOException;
 @Slf4j
 public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
-    @Value("${app.oauth.failure-redirect:http://localhost:3000/auth?error=oauth_failed}")
+    @Value("${app.oauth.failure-redirect}")
     private String redirectUrl;
 
     @Override
@@ -33,4 +33,3 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }
-
