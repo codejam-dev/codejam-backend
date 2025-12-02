@@ -1,8 +1,25 @@
-# Config Server - How It Works
+# Config Server
 
 ## Overview
 
-Config Server centralizes configuration for all microservices. Instead of each service having its own config files, they all connect to Config Server to get their configurations.
+Config Server is a microservice (like auth-service and api-gateway) that centralizes configuration for all services. Instead of each service having its own config files, they all connect to Config Server to get their configurations.
+
+## Architecture
+
+- **config-server**: Part of codejam-backend repository (public)
+  - Contains the Config Server application code
+  - Shows that it reads from a Git repository (URL visible)
+  - Does NOT contain actual production config values
+  
+- **config-repo**: Separate private Git repository
+  - Contains actual configuration values
+  - Private repository - only team members can see
+  - Production configs are stored here
+  
+- **Local config-repo**: `config-server/src/main/resources/config-repo/`
+  - For local development only (native mode)
+  - Not used in production
+  - Allows developers to work without Git access
 
 ## Two Profiles: DEV and PROD
 
