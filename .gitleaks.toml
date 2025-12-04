@@ -1,0 +1,72 @@
+# Gitleaks configuration for CodeJam
+# Prevents committing secrets to git
+
+title = "CodeJam Gitleaks Configuration"
+
+[extend]
+# Use default gitleaks rules
+useDefault = true
+
+# Additional custom rules for CodeJam
+[[rules]]
+id = "codejam-jwt-secret"
+description = "CodeJam JWT Secret"
+regex = '''(?i)(jwt[_-]?secret\s*[:=]\s*['\"]?)([a-zA-Z0-9+/=]{40,})'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "codejam-database-password"
+description = "Database Password in Properties"
+regex = '''(?i)(datasource[._-]?password\s*[:=]\s*['\"]?)([^\s'\"]+)'''
+tags = ["database", "password"]
+
+[[rules]]
+id = "codejam-google-secret"
+description = "Google OAuth Client Secret"
+regex = '''GOCSPX-[a-zA-Z0-9_-]{28}'''
+tags = ["oauth", "google"]
+
+[[rules]]
+id = "codejam-github-pat"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[a-zA-Z0-9]{36}'''
+tags = ["github", "pat"]
+
+[[rules]]
+id = "codejam-mail-password"
+description = "Email Password"
+regex = '''(?i)(mail[._-]?password\s*[:=]\s*['\"]?)([a-z]{4}\s[a-z]{4}\s[a-z]{4}\s[a-z]{4})'''
+tags = ["email", "password"]
+
+# Allowlist - files that are OK to contain secrets (templates, examples)
+[allowlist]
+description = "Allowlisted files"
+paths = [
+    '''^\.env\.example$''',
+    '''^.*\.example$''',
+    '''^.*\.template$''',
+    '''^.*\.sample$''',
+    '''SETUP\.md$''',
+    '''README\.md$''',
+]
+
+# Allowlist specific patterns that are not real secrets
+regexes = [
+    '''(?i)changeit''',  # Default placeholder passwords
+    '''(?i)your-secret-here''',
+    '''(?i)your-.*-here''',
+    '''(?i)example\.com''',
+    '''<secret>''',
+    '''<password>''',
+    '''<client-id>''',
+]
+
+# Allowlist commits (useful for historical commits)
+commits = []
+
+# Stop scanning at certain files
+stopwords = [
+    "REPLACEME",
+    "PLACEHOLDER",
+    "CHANGEME",
+]

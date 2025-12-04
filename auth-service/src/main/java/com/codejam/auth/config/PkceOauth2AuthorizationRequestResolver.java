@@ -1,6 +1,6 @@
 package com.codejam.auth.config;
 
-import com.codejam.commons.util.ObjectUtil;
+import com.codejam.commons.util.ObjectUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +43,11 @@ public class PkceOauth2AuthorizationRequestResolver implements OAuth2Authorizati
         String codeChallenge = request.getParameter(PKCE_PARAM_CODE_CHALLENGE);
         String codeChallengeMethod = request.getParameter(PKCE_PARAM_CODE_CHALLENGE_METHOD);
 
-        OAuth2AuthorizationRequest authRequest = ObjectUtil.isNullOrEmpty(clientRegistrationId) ?
+        OAuth2AuthorizationRequest authRequest = ObjectUtils.isNullOrEmpty(clientRegistrationId) ?
                 defaultResolver().resolve(request) :
                 defaultResolver().resolve(request, clientRegistrationId);
 
-        if (authRequest != null && !ObjectUtil.isNullOrEmpty(codeChallenge)) {
+        if (authRequest != null && !ObjectUtils.isNullOrEmpty(codeChallenge)) {
             if (PKCE_CODE_CHALLENGE_METHOD_S256.equals(codeChallengeMethod) && isValidCodeChallenge(codeChallenge)) {
                 request.getSession().setAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE, codeChallenge);
                 log.info("PKCE code_challenge stored in session for our own validation. Method: {}", codeChallengeMethod);

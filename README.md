@@ -95,9 +95,19 @@ The backend follows a microservices architecture with the following components:
 - PostgreSQL 15
 - Redis 7
 
+### Initial Setup: Security (Gitleaks)
+
+**First time only** - Install gitleaks to prevent committing secrets:
+
+```bash
+./setup-gitleaks.sh
+```
+
+This installs gitleaks and sets up a pre-commit hook that automatically scans for secrets before every commit.
+
 ### Environment Variables
 
-Copy `.env` file and configure all required variables:
+Create a `.env` file (already gitignored) and configure all required variables:
 
 ```bash
 # JWT Configuration

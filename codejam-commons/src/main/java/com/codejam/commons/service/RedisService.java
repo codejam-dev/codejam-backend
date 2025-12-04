@@ -1,4 +1,4 @@
-package com.codejam.commons.util;
+package com.codejam.commons.service;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.Nullable;

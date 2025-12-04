@@ -27,7 +27,13 @@ public class AppConfig {
         CorsConfiguration corsConfig = new CorsConfiguration();
         
         // Get CORS origins from config (comma-separated string)
-        String allowedOrigins = microserviceConfig.getCors().getAllowedOrigins();
+        // Use default if config is not available
+        String allowedOrigins = "http://localhost:3000,http://localhost:5173";
+        if (microserviceConfig != null && microserviceConfig.getCors() != null 
+                && microserviceConfig.getCors().getAllowedOrigins() != null) {
+            allowedOrigins = microserviceConfig.getCors().getAllowedOrigins();
+        }
+        
         List<String> origins = Arrays.asList(allowedOrigins.split(","));
         corsConfig.setAllowedOriginPatterns(origins);
         

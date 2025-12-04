@@ -4,7 +4,7 @@ import com.codejam.auth.util.AuthProvider;
 import com.codejam.auth.model.User;
 import com.codejam.auth.repository.UserRepository;
 import com.codejam.commons.exception.CustomException;
-import com.codejam.commons.util.ObjectUtil;
+import com.codejam.commons.util.ObjectUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -12,7 +12,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Objects;
 import java.util.Optional;
 
 
@@ -42,7 +41,7 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
         String lastName = oAuth2User.getAttribute("family_name");
         String profileImage = oAuth2User.getAttribute("picture");
 
-        if (ObjectUtil.isNullOrEmpty(email)) {
+        if (ObjectUtils.isNullOrEmpty(email)) {
             throw new CustomException("GOOGLE_AUTH", "Email not found from OAuth2 provider", HttpStatus.BAD_REQUEST);
         }
 
@@ -61,7 +60,7 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
                         "This email is registered using " +
                         (user.getProvider() == AuthProvider.LOCAL ? "email/password" : user.getProvider().toString()) +
                         ". Please use your " +
-                        (user.getProvider() == AuthProvider.LOCAL ? "email and password" : user.getProvider().toString() + " account") +
+                        (user.getProvider() == AuthProvider.LOCAL ? "email and password" : user.getProvider() + " account") +
                         " to login.", HttpStatus.BAD_REQUEST);
             }
 

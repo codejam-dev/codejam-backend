@@ -14,10 +14,9 @@ spring:
       server:
         native:
           # Use file system path for local dev (no recompilation needed)
-          # Reads from config-repo at codeJam level (parent directory)
-          # Default: relative to parent directory (when run from codejam-backend/)
+          # Reads from config-repo at codejam level
           # Override with: CONFIG_REPO_PATH=file:///absolute/path/to/config-repo/{application}
-          search-locations: ${CONFIG_REPO_PATH:file:${user.dir}/../config-repo/{application}}
+          search-locations: ${CONFIG_REPO_PATH:file:/Users/shubham37.mishra/codejam/config-repo/{application}}
 
 # Disable Git-related health checks for native mode
 management:

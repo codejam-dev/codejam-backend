@@ -104,4 +104,15 @@ public class JwtService {
         byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtSecret());
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    /**
+     * Extract expiration time in seconds from the token
+     * @param token the JWT token
+     * @return expiration time in seconds
+     */
+    public long extractExpirationTime(String token) {
+        Date expiration = extractExpiration(token);
+        Date now = new Date();
+        return (expiration.getTime() - now.getTime()) / 1000;
+    }
 }

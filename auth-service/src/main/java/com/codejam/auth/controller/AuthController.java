@@ -65,4 +65,9 @@ public class AuthController {
     public BaseResponse health() {
         return BaseResponse.success("Auth service is healthy");
     }
+
+    @PostMapping("/logout")
+    public BaseResponse logout(@RequestHeader("Authorization") String authorizationHeader) {
+        return authService.logout(authorizationHeader);
+    }
 }
