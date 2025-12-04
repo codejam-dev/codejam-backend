@@ -1,0 +1,59 @@
+# GIT Profile - Uses GitHub Repository (for Production)
+# This profile reads configurations from a Git repository
+#
+# To use this profile:
+# SPRING_PROFILES_ACTIVE=git
+#
+# Polls Git repository for changes and can be refreshed via webhooks
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          # Git repository URI (HTTPS or SSH)
+          # Uses CONFIG_REPO_URL from .env file
+          uri: ${CONFIG_REPO_URL:https://github.com/your-org/config-repo}
+
+          # Branch to use
+          default-label: ${CONFIG_GIT_BRANCH:main}
+
+          # Clone repository on startup
+          clone-on-start: true
+
+          # Timeout for Git operations (in seconds)
+          timeout: 10
+
+          # Force pull from Git on every request (disable caching)
+          # Set to false in production for better performance
+          force-pull: ${CONFIG_GIT_FORCE_PULL:false}
+
+          # Search paths within the repository
+          # {application} is replaced with the service name (e.g., auth-service, api-gateway)
+          search-paths: ${CONFIG_GIT_SEARCH_PATHS:{application}}
+
+          # Authentication (if using private repository)
+          # Uses GIT_USERNAME and GIT_PASSWORD from .env file
+          username: ${GIT_USERNAME:}
+          password: ${GIT_PASSWORD:}  # Use Personal Access Token for GitHub
+
+          # Option 2: SSH (uncomment if using SSH)
+          # uri: git@github.com:your-org/config-repo.git
+          # ignore-local-ssh-settings: false
+          # private-key: ${CONFIG_GIT_PRIVATE_KEY:}
+          # passphrase: ${CONFIG_GIT_PASSPHRASE:}
+
+# Enable Git-related health checks for git mode
+management:
+  endpoint:
+    health:
+      config:
+        enabled: true  # Enable Git health check
+  info:
+    git:
+      enabled: true  # Enable Git info
+
+logging:
+  level:
+    org.springframework.cloud.config.server: DEBUG
+    org.springframework.cloud.config.server.git: DEBUG

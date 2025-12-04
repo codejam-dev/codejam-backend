@@ -2,8 +2,8 @@ package com.codejam.auth.service;
 
 import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.dto.request.ValidateOtpRequest;
-import com.codejam.commons.util.ObjectUtil;
-import com.codejam.commons.util.RedisService;
+import com.codejam.commons.util.ObjectUtils;
+import com.codejam.commons.service.RedisService;
 import com.codejam.commons.util.proxyUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -58,7 +58,7 @@ public class OtpService {
         String key = proxyUtils.generateRedisKey("OTP", request.getEmail(), request.getTransactionId());
         String storedOtp = redisService.get(key);
 
-        if (ObjectUtil.isNullOrEmpty(storedOtp)) return false;
+        if (ObjectUtils.isNullOrEmpty(storedOtp)) return false;
 
         boolean isValid = storedOtp.equals(request.getOtp());
         if (isValid) {

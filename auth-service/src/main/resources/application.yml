@@ -3,7 +3,7 @@ server:
   servlet:
     context-path: /
 
-# JWT Configuration
+# JWT Configuration - Must be provided via environment variable
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}

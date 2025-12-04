@@ -3,8 +3,8 @@ package com.codejam.auth.service;
 import com.codejam.auth.dto.request.OauthExchangeRequest;
 import com.codejam.auth.dto.response.OAuthCodeResponse;
 import com.codejam.commons.exception.CustomException;
-import com.codejam.commons.util.ObjectUtil;
-import com.codejam.commons.util.RedisService;
+import com.codejam.commons.util.ObjectUtils;
+import com.codejam.commons.service.RedisService;
 import com.codejam.commons.util.proxyUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,7 +55,7 @@ public class OAuthCodeService {
             String avatar,
             String codeChallenge) {
 
-        if (ObjectUtil.isNullOrEmpty(codeChallenge)) {
+        if (ObjectUtils.isNullOrEmpty(codeChallenge)) {
             throw new CustomException(
                     "MISSING_CODE_CHALLENGE",
                     "PKCE code_challenge is required for OAuth code generation",
@@ -111,7 +111,7 @@ public class OAuthCodeService {
         String key = proxyUtils.generateRedisKey(OAUTH_CODE_REDIS_PREFIX, request.getCode());
         String storedData = redisService.get(key);
 
-        if (ObjectUtil.isNullOrEmpty(storedData)) {
+        if (ObjectUtils.isNullOrEmpty(storedData)) {
             log.warn("Invalid or expired OAuth code attempted");
             throw new CustomException(
                     "INVALID_OAUTH_CODE",
@@ -123,7 +123,7 @@ public class OAuthCodeService {
         OAuthCodeResponse oauthData = OAuthCodeResponse.fromJson(storedData);
         String storedChallenge = oauthData.getCodeChallenge();
 
-        if (ObjectUtil.isNullOrEmpty(storedChallenge)) {
+        if (ObjectUtils.isNullOrEmpty(storedChallenge)) {
             redisService.delete(key);
             log.error("PKCE code_challenge missing in stored OAuth data");
             throw new CustomException(

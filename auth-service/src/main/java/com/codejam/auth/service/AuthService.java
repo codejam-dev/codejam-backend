@@ -9,13 +9,19 @@ import com.codejam.auth.model.User;
 import com.codejam.auth.repository.UserRepository;
 import com.codejam.commons.dto.BaseResponse;
 import com.codejam.commons.exception.CustomException;
+import com.codejam.commons.service.RedisService;
+import com.codejam.commons.util.JsonUtils;
+import com.codejam.commons.util.ObjectUtils;
+import com.codejam.commons.util.proxyUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import net.minidev.json.JSONUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.codejam.auth.util.Constants.*;
@@ -29,6 +35,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final OtpService otpService;
     private final GoogleAuthService googleAuthService;
+    private final RedisService redisService;
+    private final proxyUtils proxyUtils;
 
 
     @Transactional
@@ -128,5 +136,12 @@ public class AuthService {
                         .message(OTP_SENT_MESSAGE)
                         .build()
         );
+    }
+
+    public BaseResponse logout(String authorizationHeader) {
+        String token = authorizationHeader.replace("Bearer ", "");
+        long expiresInSeconds = jwtService.extractExpirationTime(token);
+        redisService.set(proxyUtils.generateRedisKey("BLACKLISTED_TOKENS", authorizationHeader),"1",expiresInSeconds);
+        return BaseResponse.success("Logout successful");
     }
 }

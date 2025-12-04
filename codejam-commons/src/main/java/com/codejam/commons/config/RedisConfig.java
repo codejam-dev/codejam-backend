@@ -1,6 +1,6 @@
 package com.codejam.commons.config;
 
-import com.codejam.commons.util.RedisService;
+import com.codejam.commons.service.RedisService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;

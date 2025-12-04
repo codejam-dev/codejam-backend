@@ -33,6 +33,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/v1/api/auth/validateOtp"
     );
 
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
@@ -51,10 +52,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
 
+
         try {
             // Validate token
             if (!jwtService.isTokenValid(token)) {
                 return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
+            }
+
+            if("/v1/api/auth/logout".equalsIgnoreCase(path)) {
+                return chain.filter(exchange);
             }
 
             // Extract user info
@@ -67,7 +73,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (Boolean.FALSE.equals(isEnabled)) {
                 boolean isAllowedEndpoint = ALLOWED_FOR_TEMP_TOKEN.stream()
                         .anyMatch(path::startsWith);
-                
+
                 if (!isAllowedEndpoint) {
                     return onError(exchange, "Please verify your email", HttpStatus.FORBIDDEN);
                 }
