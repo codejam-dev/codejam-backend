@@ -1,10 +1,18 @@
 server:
   port: 8080
 
-# JWT Configuration
+# JWT Configuration - Must be provided via environment variable
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
+
+# Gateway Configuration (fallback if config server is unavailable)
+gateway:
+  cors:
+    allowed-origins: ${GATEWAY_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  rate-limit:
+    enabled: false
+    requests-per-second: 100
 
 spring:
   application:
@@ -13,6 +21,11 @@ spring:
   # Uses optional: so it won't fail if config server is unavailable
   config:
     import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  # Disable Spring Security auto-configuration (API Gateway uses JWT filters instead)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
   # Gateway routes - kept here as they're complex nested structures
   # Other configs come from Config Server
   cloud:

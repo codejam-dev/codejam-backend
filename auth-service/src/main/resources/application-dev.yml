@@ -14,8 +14,6 @@ app:
   oauth:
     success-redirect: http://localhost:3000/auth/callback
     failure-redirect: http://localhost:3000/login?error=oauth_failed
-  otp:
-    enable-dynamic: false
 
 spring:
   application:
