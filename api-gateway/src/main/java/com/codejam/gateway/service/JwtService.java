@@ -1,75 +1,75 @@
 package com.codejam.gateway.service;
 
+import com.codejam.commons.util.JwtUtil;
 import com.codejam.gateway.config.MicroserviceConfig;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.function.Function;
+import java.util.List;
 
+/**
+ * Gateway JWT Service - Stateless token validation only.
+ * 
+ * This service uses JwtUtil from commons for stateless token parsing.
+ * Gateway does NOT check token blacklist (that's auth-service responsibility).
+ * Gateway only validates signature and expiration, then checks scopes for authorization.
+ */
 @Service
 @RequiredArgsConstructor
 public class JwtService {
 
     private final MicroserviceConfig microserviceConfig;
+    
+    // Scope constants (should match auth-service)
+    public static final String SCOPE_API_READ = "api:read";
+    public static final String SCOPE_API_WRITE = "api:write";
+    public static final String SCOPE_OTP_GENERATE = "otp:generate";
+    public static final String SCOPE_OTP_VALIDATE = "otp:validate";
+
+    /**
+     * Check if token is valid (signature and expiration only - stateless).
+     * Does NOT check blacklist - that's auth-service responsibility.
+     */
+    public boolean isTokenNotValid(String token) {
+        return !JwtUtil.isTokenValid(token, microserviceConfig.getJwtSecret());
+    }
 
     public String extractUserId(String token) {
-        return extractClaim(token, Claims::getSubject);
+        return JwtUtil.extractUserId(token, microserviceConfig.getJwtSecret());
     }
 
     public String extractEmail(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("email", String.class);
+        return JwtUtil.extractEmail(token, microserviceConfig.getJwtSecret());
     }
 
     public String extractName(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("name", String.class);
+        return JwtUtil.extractName(token, microserviceConfig.getJwtSecret());
     }
 
+    @Deprecated
     public Boolean extractIsEnabled(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("isEnabled", Boolean.class);
+        return JwtUtil.extractIsEnabled(token, microserviceConfig.getJwtSecret());
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+    /**
+     * Extract scopes from token.
+     */
+    public List<String> extractScopes(String token) {
+        return JwtUtil.extractScopes(token, microserviceConfig.getJwtSecret());
     }
 
-    public boolean isTokenValid(String token) {
-        try {
-            return !isTokenExpired(token);
-        } catch (Exception e) {
-            return false;
-        }
+    /**
+     * Check if token has required scope.
+     */
+    public boolean hasScope(String token, String requiredScope) {
+        return JwtUtil.hasScope(token, microserviceConfig.getJwtSecret(), requiredScope);
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts
-                .parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtSecret());
-        return Keys.hmacShaKeyFor(keyBytes);
+    /**
+     * Check if token has any of the required scopes.
+     */
+    public boolean hasAnyScope(String token, List<String> requiredScopes) {
+        return JwtUtil.hasAnyScope(token, microserviceConfig.getJwtSecret(), requiredScopes);
     }
 }
 

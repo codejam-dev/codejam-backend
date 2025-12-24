@@ -1,28 +1,28 @@
 package com.codejam.gateway.controller;
 
-import com.codejam.commons.dto.BaseResponse;
-import com.codejam.gateway.dto.Healthcheckdto;
-import com.codejam.gateway.service.HealthCheckService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import java.util.Map;
 
+/**
+ * Gateway Controller
+ * 
+ * NOTE: Gateway health is exposed via /actuator/health (Spring Boot Actuator)
+ * This controller is kept minimal - no downstream health aggregation.
+ * Gateway must NOT call /actuator/** of downstream services (security boundary).
+ */
 @RestController
-public class GatewayController  {
+public class GatewayController {
 
-    private  final HealthCheckService healthCheckService;
-
-    @Autowired
-    public GatewayController(HealthCheckService healthCheckService) {
-        this.healthCheckService = healthCheckService;
-    }
-
+    /**
+     * Simple gateway health endpoint (alternative to /actuator/health)
+     * Returns basic status without aggregating downstream services.
+     */
     @GetMapping("/health")
-    public BaseResponse healthCheck(){
-        return healthCheckService.healthCheck();
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "UP", "service", "api-gateway"));
     }
-
 }
 
