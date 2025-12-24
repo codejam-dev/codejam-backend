@@ -25,27 +25,17 @@ public class MicroserviceConfig {
     private long jwtExpiration;
 
     private Cors cors = new Cors();
-    private RateLimit rateLimit = new RateLimit();
     
     @PostConstruct
     public void init() {
         if (cors == null) {
             cors = new Cors();
         }
-        if (rateLimit == null) {
-            rateLimit = new RateLimit();
-        }
     }
 
     @Data
     public static class Cors {
         private String allowedOrigins = "http://localhost:3000,http://localhost:5173";
-    }
-
-    @Data
-    public static class RateLimit {
-        private boolean enabled = false;
-        private int requestsPerSecond = 100;
     }
 }
 

@@ -31,14 +31,10 @@ public class RouteNotFoundFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
-        
-        // Check if this is an API path that should be routed
         if (path.startsWith("/v1/api/")) {
-            // Let it proceed - if route doesn't match, ErrorWebExceptionHandler will catch it
             return chain.filter(exchange).onErrorResume(throwable -> {
-                // If route matching fails, handle it here
-                if (throwable.getMessage() != null && 
-                    (throwable.getMessage().contains("404") || 
+                if (throwable.getMessage() != null &&
+                    (throwable.getMessage().contains("404") ||
                      throwable.getMessage().contains("No static resource") ||
                      throwable.getMessage().contains("No route found"))) {
                     return handleRouteNotFound(exchange, path);
@@ -77,7 +73,6 @@ public class RouteNotFoundFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        // Run after route matching (default is 0, so use a higher number)
         return Ordered.LOWEST_PRECEDENCE;
     }
 }

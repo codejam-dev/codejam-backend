@@ -1,8 +1,7 @@
 package com.codejam.auth.service;
 
-import com.codejam.auth.dto.request.LoginRequest;
-import com.codejam.auth.dto.request.RegisterRequest;
-import com.codejam.auth.dto.request.ValidateOtpRequest;
+import com.codejam.auth.config.MicroserviceConfig;
+import com.codejam.auth.dto.request.*;
 import com.codejam.auth.dto.response.AuthResponse;
 import com.codejam.auth.dto.response.GenerateOtpResponse;
 import com.codejam.auth.model.User;
@@ -10,18 +9,15 @@ import com.codejam.auth.repository.UserRepository;
 import com.codejam.commons.dto.BaseResponse;
 import com.codejam.commons.exception.CustomException;
 import com.codejam.commons.service.RedisService;
-import com.codejam.commons.util.JsonUtils;
-import com.codejam.commons.util.ObjectUtils;
 import com.codejam.commons.util.proxyUtils;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import net.minidev.json.JSONUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static com.codejam.auth.util.Constants.*;
@@ -37,6 +33,8 @@ public class AuthService {
     private final GoogleAuthService googleAuthService;
     private final RedisService redisService;
     private final proxyUtils proxyUtils;
+    private final MicroserviceConfig microserviceConfig;
+    private final EmailService emailService;
 
 
     @Transactional
@@ -84,7 +82,7 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .userId(user.getUserId())
-                .token(jwtService.generateFullToken(user))
+                .token(jwtService.generateToken(user))
                 .tokenType("Bearer")
                 .isEnabled(user.isEnabled())
                 .message(OTP_VERIFIED_MESSAGE)
@@ -144,4 +142,28 @@ public class AuthService {
         redisService.set(proxyUtils.generateRedisKey("BLACKLISTED_TOKENS", authorizationHeader),"1",expiresInSeconds);
         return BaseResponse.success("Logout successful");
     }
+
+    public BaseResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new CustomException("USER_NOT_FOUND", "User not found", HttpStatus.BAD_REQUEST));
+        String resetToken = UUID.randomUUID().toString();
+        String redisKey = proxyUtils.generateRedisKey("resetToken", user.getEmail());
+        redisService.set(redisKey,resetToken,microserviceConfig.getResetTokenExpiration());
+        emailService.sendResetPasswordEmail(user.getEmail(), resetToken);
+        return BaseResponse.success("Password reset email sent");
+    }
+
+    public BaseResponse validateResetToken(ValidateResetTokenRequest request) {
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new CustomException("USER_NOT_FOUND", "User not found", HttpStatus.BAD_REQUEST));
+        String redisKey = proxyUtils.generateRedisKey("resetToken", user.getEmail());
+        String storedToken = redisService.get(redisKey);
+        if (storedToken == null || !storedToken.equals(request.getResetToken())) {
+            throw new CustomException("INVALID_RESET_TOKEN", "Invalid or expired reset token", HttpStatus.BAD_REQUEST);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        redisService.delete(redisKey);
+        return BaseResponse.success("Password reset successful");
+    }
+
+
 }

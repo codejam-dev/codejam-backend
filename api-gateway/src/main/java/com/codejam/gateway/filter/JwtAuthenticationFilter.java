@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -25,12 +26,20 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/v1/api/auth/login",
             "/v1/api/auth/oauth2/authorization/google",
             "/v1/api/auth/oauth2/callback/google",
-            "/v1/api/auth/oauth/exchange"
+            "/v1/api/auth/oauth/exchange",
+            "/v1/api/auth/resetPassword",
+            "/v1/api/auth/validateResetToken"
     );
 
-    private static final List<String> ALLOWED_FOR_TEMP_TOKEN = List.of(
+    // Scopes required for OTP endpoints
+    private static final List<String> OTP_ENDPOINTS = List.of(
             "/v1/api/auth/generateOtp",
             "/v1/api/auth/validateOtp"
+    );
+    
+    private static final List<String> OTP_SCOPES = List.of(
+            JwtService.SCOPE_OTP_GENERATE,
+            JwtService.SCOPE_OTP_VALIDATE
     );
 
 
@@ -38,6 +47,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+
+        // Security: Explicitly deny actuator endpoints (prevent proxy to downstream services)
+        if (path.startsWith("/actuator/") && !path.equals("/actuator/health")) {
+            return onError(exchange, "Actuator endpoints are not accessible through gateway", HttpStatus.FORBIDDEN);
+        }
 
         if (isPublicEndpoint(path)) {
             return chain.filter(exchange);
@@ -54,8 +68,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 
         try {
-            // Validate token
-            if (!jwtService.isTokenValid(token)) {
+            if (jwtService.isTokenNotValid(token)) {
                 return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
             }
 
@@ -67,15 +80,18 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String userId = jwtService.extractUserId(token);
             String email = jwtService.extractEmail(token);
             String name = jwtService.extractName(token);
-            Boolean isEnabled = jwtService.extractIsEnabled(token);
+            List<String> scopes = jwtService.extractScopes(token);
 
-            // Check if temp token is trying to access protected endpoints
-            if (Boolean.FALSE.equals(isEnabled)) {
-                boolean isAllowedEndpoint = ALLOWED_FOR_TEMP_TOKEN.stream()
-                        .anyMatch(path::startsWith);
-
-                if (!isAllowedEndpoint) {
-                    return onError(exchange, "Please verify your email", HttpStatus.FORBIDDEN);
+            // Scope-based authorization: Check if token has required scope for the endpoint
+            if (OTP_ENDPOINTS.stream().anyMatch(path::startsWith)) {
+                // OTP endpoints require OTP scopes
+                if (!jwtService.hasAnyScope(token, OTP_SCOPES)) {
+                    return onError(exchange, "Insufficient permissions: OTP scope required", HttpStatus.FORBIDDEN);
+                }
+            } else {
+                // Other protected endpoints require API scopes
+                if (!jwtService.hasScope(token, JwtService.SCOPE_API_READ)) {
+                    return onError(exchange, "Insufficient permissions: API access required", HttpStatus.FORBIDDEN);
                 }
             }
 
@@ -84,7 +100,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     .header("X-User-Id", userId != null ? userId : "")
                     .header("X-User-Email", email != null ? email : "")
                     .header("X-User-Name", name != null ? name : "")
-                    .header("X-User-Enabled", isEnabled != null ? isEnabled.toString() : "false")
+                    .header("X-User-Scopes", String.join(",", scopes))
                     .build();
 
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
@@ -106,7 +122,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String errorBody = String.format(
                 "{\"success\":false,\"message\":\"%s\",\"errorCode\":\"UNAUTHORIZED\",\"timestamp\":\"%s\"}",
                 message,
-                java.time.LocalDateTime.now()
+                LocalDateTime.now()
         );
 
         return response.writeWith(
