@@ -5,6 +5,8 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final MicroserviceConfig microserviceConfig;
+    Logger logger = LoggerFactory.getLogger(EmailService.class);
 
     public void sendOtpVerificationEmail(String toEmail, String otp) {
         try {
@@ -45,6 +48,7 @@ public class EmailService {
             helper.setTo(toEmail);
             helper.setSubject("🔑 Password Reset Request for CodeJam");
             String resetLink = microserviceConfig.getFrontendUrl() + "/auth/reset-password?token=" + resetToken + "&email=" + toEmail;
+            logger.debug("Reset link: {}", resetLink);
             String htmlContent = createResetPasswordEmailTemplate(resetLink);
             helper.setText(htmlContent, true);
 

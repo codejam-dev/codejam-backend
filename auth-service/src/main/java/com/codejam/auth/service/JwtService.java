@@ -71,8 +71,8 @@ public class JwtService {
         claimsMap.put("userId", user.getUserId());
         claimsMap.put("email", user.getEmail());
         claimsMap.put("name", user.getName());
-        claimsMap.put("isEnabled", user.isEnabled()); // Keep for backward compatibility
-        claimsMap.put("scope", scopes); // Add scope claim
+        claimsMap.put("isEnabled", user.isEnabled());
+        claimsMap.put("scope", scopes);
         
         return builder()
                 .id(UUID.randomUUID().toString())
@@ -100,11 +100,9 @@ public class JwtService {
     private List<String> determineScopes(User user) {
         List<String> scopes = new ArrayList<>();
         if (user.isEnabled()) {
-            // Verified user - full access
             scopes.add(SCOPE_API_READ);
             scopes.add(SCOPE_API_WRITE);
         } else {
-            // Unverified user - only OTP access
             scopes.add(SCOPE_OTP_GENERATE);
             scopes.add(SCOPE_OTP_VALIDATE);
         }
