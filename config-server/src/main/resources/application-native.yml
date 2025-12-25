@@ -28,6 +28,6 @@ management:
 
 logging:
   level:
-    root: DEBUG
-    org.springframework.cloud.config.server: DEBUG
-    org.springframework.cloud.config.server.native: DEBUG
+    root: INFO
+    org.springframework.cloud.config.server: INFO
+    org.springframework.cloud.config.server.native: INFO

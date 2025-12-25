@@ -1,8 +1,9 @@
 package com.codejam.gateway.filter;
 
 import com.codejam.gateway.service.JwtService;
+import com.codejam.gateway.service.RateLimiterService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -18,28 +19,14 @@ import java.util.List;
 
 import static com.codejam.gateway.utils.Constants.*;
 
+@Slf4j
 @Component
-@RequiredArgsConstructor(onConstructor = @__(@Autowired))
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtService jwtService;
+    private final RateLimiterService rateLimiterService;
 
-    private static final List<String> PUBLIC_ENDPOINTS = List.of(
-            "/v1/api/auth/register",
-            "/v1/api/auth/login",
-            "/v1/api/auth/oauth2/authorization/google",
-            "/v1/api/auth/oauth2/callback/google",
-            "/v1/api/auth/oauth/exchange",
-            "/v1/api/auth/resetPassword",
-            "/v1/api/auth/validateResetToken"
-    );
-
-    // Scopes required for OTP endpoints
-    private static final List<String> OTP_ENDPOINTS = List.of(
-            "/v1/api/auth/generateOtp",
-            "/v1/api/auth/validateOtp"
-    );
-    
     private static final List<String> OTP_SCOPES = List.of(
             SCOPE_OTP_GENERATE,
             SCOPE_OTP_VALIDATE
@@ -50,29 +37,27 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        if (isPublicEndpoint(path)) {
+        if (PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith)) {
             return chain.filter(exchange);
         }
 
         if (path.startsWith("/actuator/") && !path.equals("/actuator/health")) {
-            return onError(exchange, "Actuator endpoints are not accessible through gateway", HttpStatus.FORBIDDEN);
+            return onError(exchange, "Actuator endpoints are not accessible through gateway", 
+                    HttpStatus.FORBIDDEN, "FORBIDDEN");
         }
 
         String authHeader = request.getHeaders().getFirst("Authorization");
-
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
+            return onError(exchange, "Missing or invalid Authorization header", 
+                    HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
         }
 
-       String token = authHeader.replaceFirst("(?i)^Bearer\\s+", "").trim();
+        String token = authHeader.replaceFirst("(?i)^Bearer\\s+", "").trim();
 
         try {
             if (jwtService.isTokenNotValid(token)) {
-                return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
-            }
-
-            if("/v1/api/auth/logout".equalsIgnoreCase(path)) {
-                return chain.filter(exchange);
+                return onError(exchange, "Invalid or expired token", 
+                        HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
             }
 
             String userId = jwtService.extractUserId(token);
@@ -82,41 +67,57 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
             if (OTP_ENDPOINTS.stream().anyMatch(path::startsWith)) {
                 if (!jwtService.hasAnyScope(token, OTP_SCOPES)) {
-                    return onError(exchange, "Insufficient permissions: OTP scope required", HttpStatus.FORBIDDEN);
+                    return onError(exchange, "Insufficient permissions: OTP scope required", 
+                            HttpStatus.FORBIDDEN, "FORBIDDEN");
                 }
+
+                return rateLimiterService.checkRateLimit(userId)
+                        .flatMap(allowed -> {
+                            if (!allowed) {
+                                return onError(exchange, "Rate limit exceeded. Please try again later.", 
+                                        HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED");
+                            }
+                            return continueWithHeaders(exchange, userId, email, name, scopes, chain);
+                        });
             } else {
-                if (!jwtService.hasScope(token, SCOPE_API_READ)) {
-                    return onError(exchange, "Insufficient permissions: API access required", HttpStatus.FORBIDDEN);
+                boolean hasApiAccess = jwtService.hasScope(token, SCOPE_API_READ) || jwtService.hasScope(token, SCOPE_API_WRITE);
+                if (!hasApiAccess) {
+                    return onError(exchange, "Insufficient permissions: API access required", HttpStatus.FORBIDDEN, "FORBIDDEN");
                 }
+                return continueWithHeaders(exchange, userId, email, name, scopes, chain);
             }
 
-            // Add user info to headers for downstream services
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId != null ? userId : "")
-                    .header("X-User-Email", email != null ? email : "")
-                    .header("X-User-Name", name != null ? name : "")
-                    .header("X-User-Scopes", String.join(",", scopes))
-                    .build();
-
-            return chain.filter(exchange.mutate().request(modifiedRequest).build());
-
         } catch (Exception e) {
-            return onError(exchange, "Token validation failed: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
+            log.error("Token validation failed for path: {}", path, e);
+            return onError(exchange, "Token validation failed", HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
         }
     }
 
-    private boolean isPublicEndpoint(String path) {
-        return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
+    private Mono<Void> continueWithHeaders(ServerWebExchange exchange, String userId, 
+                                          String email, String name, List<String> scopes, 
+                                          GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpRequest modifiedRequest = request.mutate()
+                .header("X-User-Id", userId != null ? userId : "")
+                .header("X-User-Email", email != null ? email : "")
+                .header("X-User-Name", name != null ? name : "")
+                .header("X-User-Scopes", String.join(",", scopes))
+                .build();
+
+        return chain.filter(exchange.mutate().request(modifiedRequest).build());
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
+
+    private Mono<Void> onError(ServerWebExchange exchange, String message, 
+                               HttpStatus status, String errorCode) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().add("Content-Type", "application/json");
 
         String errorBody = String.format(
-                "{\"success\":false,\"message\":\"%s\",\"errorCode\":\"UNAUTHORIZED\",\"timestamp\":\"%s\"}",
+                "{\"success\":false,\"message\":\"%s\",\"errorCode\":\"%s\",\"timestamp\":\"%s\"}",
                 message,
+                errorCode,
                 LocalDateTime.now()
         );
 

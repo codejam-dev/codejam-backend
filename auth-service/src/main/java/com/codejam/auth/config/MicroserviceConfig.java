@@ -1,5 +1,6 @@
 package com.codejam.auth.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -46,6 +47,13 @@ public class MicroserviceConfig {
 
     @Value("${app.password.resetTokenExpiration:3600}")
     private long resetTokenExpiration;
+
+    @PostConstruct
+    public void init() {
+        if (jwtSecret != null) {
+            jwtSecret = jwtSecret.trim();
+        }
+    }
 
     @Data
     public static class OAuth {

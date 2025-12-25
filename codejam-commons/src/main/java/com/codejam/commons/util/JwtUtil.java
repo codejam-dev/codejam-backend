@@ -6,25 +6,14 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.List;
 import java.util.function.Function;
 
-/**
- * Shared JWT utility for stateless token parsing and validation.
- * 
- * This utility provides:
- * - Token parsing and signature validation
- * - Claim extraction
- * - Scope-based authorization checking
- * - Expiration validation
- * 
- * NOTE: This is stateless - does NOT check token blacklist (that's service-specific).
- * Gateway should use this for stateless validation only.
- * Auth-service can use this and add blacklist check separately.
- */
+@Slf4j
 public class JwtUtil {
 
     /**
@@ -47,8 +36,12 @@ public class JwtUtil {
                     .getPayload();
         } catch (ExpiredJwtException e) {
             throw e;
+        } catch (IllegalArgumentException e) {
+            throw new JwtException("Invalid token format: " + e.getMessage(), e);
         } catch (JwtException e) {
             throw new JwtException("Invalid token: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new JwtException("Token parsing failed: " + e.getMessage(), e);
         }
     }
 
@@ -195,8 +188,12 @@ public class JwtUtil {
      * Get signing key from base64-encoded secret.
      */
     private static SecretKey getSignInKey(String jwtSecret) {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid JWT secret format. Must be base64-encoded.", e);
+        }
     }
 }
 

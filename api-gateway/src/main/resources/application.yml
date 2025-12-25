@@ -54,3 +54,17 @@ spring:
   web:
     resources:
       add-mappings: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  info:
+    git:
+      enabled: false

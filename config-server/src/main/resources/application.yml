@@ -44,7 +44,7 @@ management:
       enabled: false
   info:
     git:
-      # Git info is profile-specific (enabled in git profile, disabled in native)
+      enabled: false
 
 logging:
   level:
