@@ -29,7 +29,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -74,3 +74,30 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+# Actuator Configuration (Kubernetes-first)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,refresh  # Only health and refresh
+        exclude: env,configprops,shutdown,httptrace,beans,metrics  # Explicitly exclude dangerous endpoints
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized  # Never show details publicly
+      probes:
+        enabled: true  # Enable liveness/readiness probes
+    refresh:
+      enabled: true  # Required for config refresh (secured via ActuatorRefreshFilter)
+    shutdown:
+      enabled: false  # Always disabled
+    env:
+      enabled: false  # Never expose environment variables
+    configprops:
+      enabled: false  # Never expose configuration properties
+
+# Actuator refresh security (machine access only)
+actuator:
+  refresh:
+    token: ${ACTUATOR_REFRESH_TOKEN:}  # Must be provided via environment variable

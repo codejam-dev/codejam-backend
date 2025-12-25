@@ -23,16 +23,9 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            // Set friendly sender
             helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
-
-            // Set recipient
             helper.setTo(toEmail);
-
-            // Subject with OTP
             helper.setSubject("🔐 Your OTP for CodeJam - " + otp);
-
-            // Beautiful HTML template
             String htmlContent = createOtpEmailTemplate(otp);
             helper.setText(htmlContent, true);
 
@@ -40,6 +33,25 @@ public class EmailService {
             System.out.println("OTP verification email sent to: " + toEmail);
         } catch (MessagingException | UnsupportedEncodingException e) {
             throw new RuntimeException("Failed to send OTP verification email", e);
+        }
+    }
+
+    public void sendResetPasswordEmail(String toEmail, String resetToken) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
+            helper.setTo(toEmail);
+            helper.setSubject("🔑 Password Reset Request for CodeJam");
+            String resetLink = microserviceConfig.getFrontendUrl() + "/auth/reset-password?token=" + resetToken + "&email=" + toEmail;
+            String htmlContent = createResetPasswordEmailTemplate(resetLink);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            System.out.println("Password reset email sent to: " + toEmail);
+        } catch (MessagingException | UnsupportedEncodingException e) {
+            throw new RuntimeException("Failed to send password reset email", e);
         }
     }
 
@@ -191,6 +203,25 @@ public class EmailService {
             </body>
             </html>
             """.replace("{}", otp);
+    }
+
+    private String createResetPasswordEmailTemplate(String resetLink) {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Password Reset</title>
+            </head>
+            <body>
+                <h2>Password Reset Request</h2>
+                <p>Click the link below to reset your password:</p>
+                <a href="{}">Reset Password</a>
+                <p>If you did not request a password reset, please ignore this email.</p>
+            </body>
+            </html>
+            """.replace("{}", resetLink);
     }
 }
 

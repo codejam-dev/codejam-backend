@@ -1,6 +1,7 @@
 package com.codejam.gateway.filter;
 
 import com.codejam.gateway.service.JwtService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -15,11 +16,13 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static com.codejam.gateway.utils.Constants.*;
+
 @Component
+@RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
-    @Autowired
-    private JwtService jwtService;
+    private final JwtService jwtService;
 
     private static final List<String> PUBLIC_ENDPOINTS = List.of(
             "/v1/api/auth/register",
@@ -38,34 +41,30 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     );
     
     private static final List<String> OTP_SCOPES = List.of(
-            JwtService.SCOPE_OTP_GENERATE,
-            JwtService.SCOPE_OTP_VALIDATE
+            SCOPE_OTP_GENERATE,
+            SCOPE_OTP_VALIDATE
     );
-
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        // Security: Explicitly deny actuator endpoints (prevent proxy to downstream services)
-        if (path.startsWith("/actuator/") && !path.equals("/actuator/health")) {
-            return onError(exchange, "Actuator endpoints are not accessible through gateway", HttpStatus.FORBIDDEN);
-        }
-
         if (isPublicEndpoint(path)) {
             return chain.filter(exchange);
         }
 
-        // Extract token from Authorization header
+        if (path.startsWith("/actuator/") && !path.equals("/actuator/health")) {
+            return onError(exchange, "Actuator endpoints are not accessible through gateway", HttpStatus.FORBIDDEN);
+        }
+
         String authHeader = request.getHeaders().getFirst("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
         }
 
-        String token = authHeader.substring(7);
-
+       String token = authHeader.replaceFirst("(?i)^Bearer\\s+", "").trim();
 
         try {
             if (jwtService.isTokenNotValid(token)) {
@@ -76,21 +75,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 return chain.filter(exchange);
             }
 
-            // Extract user info
             String userId = jwtService.extractUserId(token);
             String email = jwtService.extractEmail(token);
             String name = jwtService.extractName(token);
             List<String> scopes = jwtService.extractScopes(token);
 
-            // Scope-based authorization: Check if token has required scope for the endpoint
             if (OTP_ENDPOINTS.stream().anyMatch(path::startsWith)) {
-                // OTP endpoints require OTP scopes
                 if (!jwtService.hasAnyScope(token, OTP_SCOPES)) {
                     return onError(exchange, "Insufficient permissions: OTP scope required", HttpStatus.FORBIDDEN);
                 }
             } else {
-                // Other protected endpoints require API scopes
-                if (!jwtService.hasScope(token, JwtService.SCOPE_API_READ)) {
+                if (!jwtService.hasScope(token, SCOPE_API_READ)) {
                     return onError(exchange, "Insufficient permissions: API access required", HttpStatus.FORBIDDEN);
                 }
             }
@@ -125,14 +120,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 LocalDateTime.now()
         );
 
-        return response.writeWith(
-                Mono.just(response.bufferFactory().wrap(errorBody.getBytes()))
-        );
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(errorBody.getBytes())));
     }
 
     @Override
     public int getOrder() {
-        return -100; // High priority - run before other filters
+        return -100;
     }
 }
 

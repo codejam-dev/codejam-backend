@@ -25,11 +25,17 @@ import java.nio.charset.StandardCharsets;
  * This complements GatewayExceptionHandler which handles controller exceptions
  */
 @Component
-@Order(-2) // Higher priority than default handler (-1)
+@Order(-2)
 public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     Logger log = LoggerFactory.getLogger(GatewayErrorWebExceptionHandler.class);
+
+    private final ObjectMapper objectMapper;
+
+    public GatewayErrorWebExceptionHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         ServerHttpResponse response = exchange.getResponse();
@@ -43,7 +49,6 @@ public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler
         String errorMessage = "An error occurred";
         String path = exchange.getRequest().getPath().value();
 
-        // Handle different types of exceptions
         if (ex instanceof NotFoundException) {
             status = HttpStatus.NOT_FOUND;
             errorMessage = "Route not found: " + path;
@@ -55,7 +60,7 @@ public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler
             }
             errorMessage = responseStatusException.getReason() != null
                     ? responseStatusException.getReason()
-                    : (status != null ? status.getReasonPhrase() : "An error occurred");
+                    : status.getReasonPhrase();
             log.warn("ResponseStatusException: {} - {}", status, errorMessage);
         } else if (ex.getMessage() != null) {
             String message = ex.getMessage();

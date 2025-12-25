@@ -44,6 +44,9 @@ public class MicroserviceConfig {
     @Value("${spring.mail.port:587}")
     private int mailPort;
 
+    @Value("${app.password.resetTokenExpiration:3600}")
+    private long resetTokenExpiration;
+
     @Data
     public static class OAuth {
         private String successRedirect;
@@ -59,5 +62,7 @@ public class MicroserviceConfig {
         private String testValue;
         private String testTransactionId;
     }
+
+
 }
 
