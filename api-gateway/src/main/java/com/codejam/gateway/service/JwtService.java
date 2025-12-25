@@ -9,7 +9,6 @@ import java.util.List;
 
 /**
  * Gateway JWT Service - Stateless token validation only.
- * 
  * This service uses JwtUtil from commons for stateless token parsing.
  * Gateway does NOT check token blacklist (that's auth-service responsibility).
  * Gateway only validates signature and expiration, then checks scopes for authorization.
@@ -19,12 +18,6 @@ import java.util.List;
 public class JwtService {
 
     private final MicroserviceConfig microserviceConfig;
-    
-    // Scope constants (should match auth-service)
-    public static final String SCOPE_API_READ = "api:read";
-    public static final String SCOPE_API_WRITE = "api:write";
-    public static final String SCOPE_OTP_GENERATE = "otp:generate";
-    public static final String SCOPE_OTP_VALIDATE = "otp:validate";
 
     /**
      * Check if token is valid (signature and expiration only - stateless).

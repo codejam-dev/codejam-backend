@@ -35,7 +35,14 @@ public class SecurityConfig {
                                 .maxSessionsPreventsLogin(false)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/actuator/**").permitAll()
+                        // Public auth endpoints
+                        .requestMatchers("/auth/**").permitAll()
+                        // Actuator health - public for Kubernetes probes
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Actuator refresh - secured via ActuatorRefreshFilter (API key validation)
+                        .requestMatchers("/actuator/refresh").permitAll()  // Filter handles auth
+                        // All other actuator endpoints - deny
+                        .requestMatchers("/actuator/**").denyAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

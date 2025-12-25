@@ -11,6 +11,11 @@ spring:
 webhook:
   secret: ${WEBHOOK_SECRET:}
 
+# Actuator refresh token for machine access to service refresh endpoints
+actuator:
+  refresh:
+    token: ${ACTUATOR_REFRESH_TOKEN:}
+
 services:
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8081}
@@ -21,18 +26,30 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,refresh,env,configprops
+        include: health,info
+        exclude: env,configprops,shutdown,httptrace,beans
   endpoint:
     health:
-      show-details: always
-      config:
+      show-details: when-authorized
+      probes:
         enabled: true
+      # Health check configuration is profile-specific
+      # Native: config.enabled=false (no Git checks)
+      # Git: config.enabled=true (Git check enabled but won't fail on slowness)
+    shutdown:
+      enabled: false
+    env:
+      enabled: false
+    configprops:
+      enabled: false
   info:
     git:
-      enabled: true
+      # Git info is profile-specific (enabled in git profile, disabled in native)
 
 logging:
   level:
     root: INFO
     org.springframework.cloud.config: INFO
-    org.springframework.cloud.config.server: DEBUG
+    # Logging levels are profile-specific:
+    # Native: DEBUG (for local dev)
+    # Git: INFO (for production)
