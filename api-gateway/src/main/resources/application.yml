@@ -18,7 +18,6 @@ spring:
   # Uses optional: so it won't fail if config server is unavailable
   config:
     import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
-  # Disable Spring Security auto-configuration (API Gateway uses JWT filters instead)
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration

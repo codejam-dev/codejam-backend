@@ -35,6 +35,8 @@ public class SecurityConfig {
                                 .maxSessionsPreventsLogin(false)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Root path - public
+                        .requestMatchers("/").permitAll()
                         // Public auth endpoints
                         .requestMatchers("/auth/**").permitAll()
                         // Actuator health - public for Kubernetes probes
