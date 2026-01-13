@@ -1,7 +1,5 @@
 package com.codejam.execution.dto;
 
-
-import ch.qos.logback.classic.spi.Configurator;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

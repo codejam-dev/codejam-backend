@@ -94,17 +94,11 @@
 			<version>3.3.4</version>
 		</dependency>
 
+		<!-- Use okhttp transport - better Unix socket support -->
 		<dependency>
 			<groupId>com.github.docker-java</groupId>
-			<artifactId>docker-java-transport-httpclient5</artifactId>
+			<artifactId>docker-java-transport-okhttp</artifactId>
 			<version>3.3.4</version>
-		</dependency>
-
-		<!-- Missing dependency for httpclient5 - provides HttpVersionPolicy -->
-		<dependency>
-			<groupId>org.apache.httpcomponents.core5</groupId>
-			<artifactId>httpcore5-h2</artifactId>
-			<version>5.3.5</version>
 		</dependency>
 
 	</dependencies>

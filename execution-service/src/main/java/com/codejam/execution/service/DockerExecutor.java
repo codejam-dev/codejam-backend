@@ -9,6 +9,7 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.model.*;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -39,12 +40,59 @@ public class DockerExecutor implements CodeExecutor {
             tempFile = createTempFile(submission);
 
             containerId = createContainer(submission, tempFile);
-            dockerClient.startContainerCmd(containerId).exec();
+            log.info("Starting container {} for room {}, language: {}", containerId, submission.getRoomId(), submission.getLanguage());
+            
+            try {
+                // Start container with stdin disabled to prevent hanging
+                dockerClient.startContainerCmd(containerId)
+                        .exec();
+                log.info("Container {} started successfully", containerId);
+            } catch (Exception e) {
+                log.error("Failed to start container {} for room {}", containerId, submission.getRoomId(), e);
+                throw new CustomException("CONTAINER_START_FAILED", "Failed to start container: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            }
 
-            Integer exitCode = dockerClient
-                    .waitContainerCmd(containerId)
-                    .exec(new WaitContainerResultCallback())
-                    .awaitStatusCode(microserviceConfig.getExecutor().getTimeoutSeconds(), TimeUnit.SECONDS);
+            // Wait for container to complete with timeout
+            Integer exitCode;
+            try {
+                exitCode = dockerClient
+                        .waitContainerCmd(containerId)
+                        .exec(new WaitContainerResultCallback())
+                        .awaitStatusCode(microserviceConfig.getExecutor().getTimeoutSeconds(), TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.warn("Error waiting for container {} to complete, checking status directly: {}", containerId, e.getMessage());
+                // If wait times out, try to get container status directly
+                try {
+                    InspectContainerResponse containerInfo = dockerClient.inspectContainerCmd(containerId).exec();
+                    InspectContainerResponse.ContainerState state = containerInfo.getState();
+                    if (state != null && state.getRunning() != null && !state.getRunning()) {
+                        // Use getExitCodeLong() instead of deprecated getExitCode()
+                        Long exitCodeLong = state.getExitCodeLong();
+                        exitCode = exitCodeLong != null ? exitCodeLong.intValue() : null;
+                        log.info("Container {} exited with code: {}", containerId, exitCode);
+                    } else {
+                        // Container still running, force stop it
+                        log.warn("Container {} still running after timeout, forcing stop", containerId);
+                        try {
+                            dockerClient.stopContainerCmd(containerId).withTimeout(1).exec();
+                        } catch (Exception stopError) {
+                            log.error("Failed to stop container {}: {}", containerId, stopError.getMessage());
+                        }
+                        exitCode = 124; // Exit code for timeout
+                    }
+                } catch (CustomException ce) {
+                    throw ce; // Re-throw timeout exceptions
+                } catch (Exception inspectError) {
+                    log.error("Failed to inspect container {}: {}", containerId, inspectError.getMessage());
+                    // Force stop and return timeout
+                    try {
+                        dockerClient.stopContainerCmd(containerId).withTimeout(1).exec();
+                    } catch (Exception stopError) {
+                        log.error("Failed to stop container {}: {}", containerId, stopError.getMessage());
+                    }
+                    throw new CustomException("EXECUTION_TIMEOUT", "Execution timed out after " + microserviceConfig.getExecutor().getTimeoutSeconds() + "s", HttpStatus.REQUEST_TIMEOUT);
+                }
+            }
 
             if (exitCode == null) {
                 dockerClient.stopContainerCmd(containerId).withTimeout(1).exec();
@@ -102,8 +150,13 @@ public class DockerExecutor implements CodeExecutor {
 
         CreateContainerResponse container = dockerClient.createContainerCmd(image)
                 .withUser("65534:65534")
-                .withCmd("/bin/sh", "-c", command)
+                .withCmd("sh", "-c", command)
                 .withHostConfig(hostConfig)
+                .withAttachStdin(false)  // Disable stdin to prevent hanging
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withTty(false)  // Disable TTY to prevent interactive mode
+                .withStdinOpen(false)  // Explicitly close stdin
                 .exec();
 
         return container.getId();
@@ -114,9 +167,9 @@ public class DockerExecutor implements CodeExecutor {
         String binaryPath = "/tmp/" + fileNameWithoutExt;
 
         return switch (language) {
-            case JAVASCRIPT -> "cd /workspace && node " + fileName;
+            case JAVASCRIPT -> "cd /workspace && node " + fileName + " </dev/null";
             case PYTHON -> "cd /workspace && python " + fileName;
-            case JAVA -> "cd /workspace && javac -d /tmp " + fileName + " && cd /tmp && java " + fileNameWithoutExt;
+            case JAVA -> "cd /workspace && javac -d /tmp " + fileName + " 2>&1 && cd /tmp && java " + fileNameWithoutExt + " 2>&1 </dev/null || exit $?";
             case CPP -> "cd /workspace && g++ -o " + binaryPath + " " + fileName + " && " + binaryPath;
             case C -> "cd /workspace && gcc -o " + binaryPath + " " + fileName + " && " + binaryPath;
             case GO -> "cd /workspace && GOTMPDIR=/tmp go run " + fileName;
