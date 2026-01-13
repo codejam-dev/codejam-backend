@@ -3,9 +3,7 @@ package com.codejam.auth.service;
 import com.codejam.auth.util.AuthProvider;
 import com.codejam.auth.model.User;
 import com.codejam.auth.repository.UserRepository;
-import com.codejam.commons.exception.CustomException;
 import com.codejam.commons.util.ObjectUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -32,14 +30,7 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
     public OAuth2User loadUser(OAuth2UserRequest userRequest) {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
-
-        try {
-            return processOAuth2User(registrationId, oAuth2User);
-        } catch (CustomException e) {
-            // Wrap CustomException in OAuth2AuthenticationException so Spring Security's failure handler can catch it
-            OAuth2Error oauth2Error = new OAuth2Error(e.getErrorType(), e.getCustomMessage(), null);
-            throw new OAuth2AuthenticationException(oauth2Error, e);
-        }
+        return processOAuth2User(registrationId, oAuth2User);
     }
 
     public OAuth2User processOAuth2User(String registrationId, OAuth2User oAuth2User) {
@@ -50,7 +41,8 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
         String profileImage = oAuth2User.getAttribute("picture");
 
         if (ObjectUtils.isNullOrEmpty(email)) {
-            throw new CustomException("GOOGLE_AUTH", "Email not found from OAuth2 provider", HttpStatus.BAD_REQUEST);
+            OAuth2Error oauth2Error = new OAuth2Error("GOOGLE_AUTH", "Email not found from OAuth2 provider", null);
+            throw new OAuth2AuthenticationException(oauth2Error);
         }
 
         String normalizedEmail = email.trim().toLowerCase();
@@ -61,16 +53,9 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
         if (optionalUser.isPresent()) {
             user = optionalUser.get();
 
-            // Check if user is trying to login with different provider
-            // If provider is LOCAL and user has password, prevent OAuth login
-            if (user.getProvider() != null && !user.getProvider().equals(authProvider)) {
-                throw new CustomException("PROVIDER_MISMATCH",
-                        "This email is registered using " +
-                        (user.getProvider() == AuthProvider.LOCAL ? "email/password" : user.getProvider().toString()) +
-                        ". Please use your " +
-                        (user.getProvider() == AuthProvider.LOCAL ? "email and password" : user.getProvider() + " account") +
-                        " to login.", HttpStatus.BAD_REQUEST);
-            }
+            // Link Google account to existing user (whether they had LOCAL or GOOGLE provider)
+            // This allows users to login with either email/password or Google
+            // Password is preserved if user had LOCAL provider, enabling dual authentication
 
             if(profileImage!=null){
                 try {
