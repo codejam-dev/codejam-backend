@@ -8,6 +8,8 @@ import com.codejam.commons.util.ObjectUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -31,7 +33,13 @@ public class GoogleAuthService extends DefaultOAuth2UserService {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
 
-        return processOAuth2User(registrationId, oAuth2User);
+        try {
+            return processOAuth2User(registrationId, oAuth2User);
+        } catch (CustomException e) {
+            // Wrap CustomException in OAuth2AuthenticationException so Spring Security's failure handler can catch it
+            OAuth2Error oauth2Error = new OAuth2Error(e.getErrorType(), e.getCustomMessage(), null);
+            throw new OAuth2AuthenticationException(oauth2Error, e);
+        }
     }
 
     public OAuth2User processOAuth2User(String registrationId, OAuth2User oAuth2User) {

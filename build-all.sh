@@ -36,6 +36,7 @@ show_usage() {
     echo "  codejam-commons    - Shared library (always built first)"
     echo "  auth-service       - Authentication service"
     echo "  api-gateway        - API Gateway"
+    echo "  execution-service  - Code execution service"
     echo "  config-server      - Configuration server (optional)"
     echo ""
     echo "Examples:"
@@ -57,7 +58,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # Define all services
-ALL_SERVICES=("auth-service" "api-gateway" "config-server")
+ALL_SERVICES=("auth-service" "api-gateway" "execution-service" "config-server")
 
 # Determine which services to build
 if [ $# -eq 0 ]; then
@@ -83,6 +84,9 @@ for service in "${SERVICES_TO_BUILD[@]}"; do
             ;;
         api-gateway)
             build_service "api-gateway" "🌐"
+            ;;
+        execution-service)
+            build_service "execution-service" "⚡"
             ;;
         config-server)
             build_service "config-server" "⚙️"
@@ -111,5 +115,6 @@ else
     echo "✅ Selected services built successfully!"
 fi
 echo "🚀 Run 'docker-compose up' to start all services"
+
 
 
