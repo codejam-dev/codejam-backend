@@ -13,7 +13,7 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   oauth:
     success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:3000/auth/callback}
-    failure-redirect: ${OAUTH_FAILURE_REDIRECT:http://localhost:3000/login?error=oauth_failed}
+    failure-redirect: ${OAUTH_FAILURE_REDIRECT:http://localhost:3000/auth/login?error=oauth_failed}
   otp:
     enable-dynamic: ${OTP_ENABLE_DYNAMIC:false}
 
@@ -37,7 +37,14 @@ spring:
         format_sql: true
         default_schema: auth
 
-# Redis Configuration
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+
   security:
     oauth2:
       client:

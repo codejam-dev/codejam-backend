@@ -45,6 +45,18 @@ services:
     networks:
       - codejam-network
 
+  execution-service:
+    build: ./execution-service
+    container_name: execution-service
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8082:8082"
+    networks:
+      - codejam-network
+
 volumes:
   codejam-postgres-data:
   codejam-redis-data:

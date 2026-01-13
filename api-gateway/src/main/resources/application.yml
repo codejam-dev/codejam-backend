@@ -22,6 +22,13 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+  # Redis Configuration for rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
   # Gateway routes - kept here as they're complex nested structures
   # Other configs come from Config Server
   cloud:
@@ -45,6 +52,13 @@ spring:
           uri: http://${AUTH_SERVICE_URL:localhost}:${AUTH_SERVICE_PORT:8081}
           predicates:
             - Path=/v1/api/auth/**
+          filters:
+            - StripPrefix=2
+        # Execution service route
+        - id: execution-service
+          uri: http://${EXECUTION_SERVICE_URL:localhost}:${EXECUTION_SERVICE_PORT:8082}
+          predicates:
+            - Path=/v1/api/execution/**
           filters:
             - StripPrefix=2
   # Disable static resource handling

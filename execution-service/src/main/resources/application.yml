@@ -1,0 +1,37 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: execution-service
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+
+app:
+  executor:
+    type: ${EXECUTOR_TYPE:oracle-vm}
+    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    timeout-seconds: 30
+    memory-limit-mb: 256
+    cpu-limit: 0.5
+
+  # Oracle VM config (prod)
+  oracle-vm:
+    endpoint: ${ORACLE_VM_ENDPOINT:}
+    api-key: ${ORACLE_VM_API_KEY:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
