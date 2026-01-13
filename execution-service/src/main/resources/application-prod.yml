@@ -11,14 +11,9 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
-
 app:
   executor:
-    type: ${EXECUTOR_TYPE:docker}  # docker for local, judge0 for prod
-    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
-    timeout-seconds: 30
-    memory-limit-mb: 256
-    cpu-limit: 0.5
+    type: judge0
 
   judge0:
     rapidapi:
@@ -29,6 +24,11 @@ app:
       poll-interval-ms: ${JUDGE0_POLL_INTERVAL_MS:1000}
       max-poll-attempts: ${JUDGE0_MAX_POLL_ATTEMPTS:25}
       memory-limit-mb: ${JUDGE0_MEMORY_LIMIT_MB:256}
+
+logging:
+  level:
+    com.codejam.execution: INFO
+
 management:
   endpoints:
     web:
@@ -39,4 +39,3 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
-
