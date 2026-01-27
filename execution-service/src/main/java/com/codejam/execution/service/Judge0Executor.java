@@ -31,10 +31,10 @@ public class Judge0Executor implements com.codejam.execution.service.CodeExecuto
         LANGUAGE_ID_MAP.put(CodeSubmission.Language.JAVASCRIPT, 63); // Node.js
         LANGUAGE_ID_MAP.put(CodeSubmission.Language.PYTHON, 71);      // Python 3
         LANGUAGE_ID_MAP.put(CodeSubmission.Language.JAVA, 62);        // Java
-        LANGUAGE_ID_MAP.put(CodeSubmission.Language.CPP, 54);          // C++
-        LANGUAGE_ID_MAP.put(CodeSubmission.Language.C, 50);            // C
-        LANGUAGE_ID_MAP.put(CodeSubmission.Language.GO, 60);           // Go
-        LANGUAGE_ID_MAP.put(CodeSubmission.Language.RUST, 73);          // Rust
+//        LANGUAGE_ID_MAP.put(CodeSubmission.Language.CPP, 54);          // C++
+//        LANGUAGE_ID_MAP.put(CodeSubmission.Language.C, 50);            // C
+//        LANGUAGE_ID_MAP.put(CodeSubmission.Language.GO, 60);           // Go
+//        LANGUAGE_ID_MAP.put(CodeSubmission.Language.RUST, 73);          // Rust
     }
 
     // Judge0 status IDs
