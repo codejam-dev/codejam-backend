@@ -33,10 +33,10 @@ public class MicroserviceConfig {
     private long jwtExpiration;
 
     // Mail Configuration (different prefix)
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String mailUsername;
 
-    @Value("${spring.mail.password}")
+    @Value("${spring.mail.password:}")
     private String mailPassword;
 
     @Value("${spring.mail.host:smtp.gmail.com}")

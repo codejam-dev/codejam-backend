@@ -27,4 +27,8 @@ public class ExecutionService {
 
         return executor.execute(submission);
     }
+
+    public Object getSupportedLanguages() {
+        return CodeSubmission.Language.values();
+    }
 }

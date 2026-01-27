@@ -40,6 +40,11 @@ public class ExecutionController {
         }
     }
 
+    @GetMapping("/supported-languages")
+    public ResponseEntity<?> getSupportedLanguages() {
+        return ResponseEntity.ok(executionService.getSupportedLanguages());
+    }
+
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Execution service is running");

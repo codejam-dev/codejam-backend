@@ -94,7 +94,7 @@
 			<version>3.3.4</version>
 		</dependency>
 
-		<!-- Use okhttp transport - better Unix socket support -->
+		<!-- OkHttp transport - Unix socket support for Docker daemon -->
 		<dependency>
 			<groupId>com.github.docker-java</groupId>
 			<artifactId>docker-java-transport-okhttp</artifactId>

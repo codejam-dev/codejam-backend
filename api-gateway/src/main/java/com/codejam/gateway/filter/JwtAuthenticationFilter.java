@@ -55,15 +55,22 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String token = authHeader.replaceFirst("(?i)^Bearer\\s+", "").trim();
 
         try {
+            // Log token validation attempt
+            log.debug("Validating token for path: {}", path);
+            
             if (jwtService.isTokenNotValid(token)) {
+                log.warn("Token validation failed for path: {} - token is invalid or expired", path);
                 return onError(exchange, "Invalid or expired token", 
                         HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
             }
 
+            log.debug("Token is valid, extracting claims");
             String userId = jwtService.extractUserId(token);
             String email = jwtService.extractEmail(token);
             String name = jwtService.extractName(token);
             List<String> scopes = jwtService.extractScopes(token);
+            
+            log.debug("Extracted scopes: {} for user: {}", scopes, email);
 
             if (OTP_ENDPOINTS.stream().anyMatch(path::startsWith)) {
                 if (!jwtService.hasAnyScope(token, OTP_SCOPES)) {
@@ -88,8 +95,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             }
 
         } catch (Exception e) {
-            log.error("Token validation failed for path: {}", path, e);
-            return onError(exchange, "Token validation failed", HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
+            log.error("Token validation failed for path: {} - Error: {} - Message: {}", 
+                    path, e.getClass().getSimpleName(), e.getMessage(), e);
+            return onError(exchange, "Token validation failed: " + e.getMessage(), HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
         }
     }
 
