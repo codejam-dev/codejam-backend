@@ -48,6 +48,7 @@ paths = [
     '''^.*\.sample$''',
     '''SETUP\.md$''',
     '''README\.md$''',
+    '''docker-compose.*\.yml$''',  # Docker compose files use env var references, not real secrets
 ]
 
 # Allowlist specific patterns that are not real secrets
@@ -59,6 +60,7 @@ regexes = [
     '''<secret>''',
     '''<password>''',
     '''<client-id>''',
+    '''\$\{[A-Z_]+\}''',  # Environment variable references like ${POSTGRES_PASSWORD}
 ]
 
 # Allowlist commits (useful for historical commits)
