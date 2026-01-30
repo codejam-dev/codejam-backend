@@ -14,7 +14,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>codejam-commons</name>
-	<description>Shared common library for CodeJam services</description>
+	<description>Shared utility library for CodeJam - JWT, Redis, exceptions, DTOs used across codejam and other modules</description>
 
 	<properties>
 		<java.version>21</java.version>

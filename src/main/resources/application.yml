@@ -1,0 +1,122 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: codejam
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: auth
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: profile,email
+            redirect-uri: "${FRONTEND_URL:http://localhost:8080}/v1/api/auth/oauth2/callback/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://www.googleapis.com/oauth2/v4/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# App (auth + execution)
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  oauth:
+    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:3000/auth/callback}
+    failure-redirect: ${OAUTH_FAILURE_REDIRECT:http://localhost:3000/auth/login?error=oauth_failed}
+  otp:
+    enable-dynamic: ${OTP_ENABLE_DYNAMIC:false}
+  executor:
+    type: ${EXECUTOR_TYPE:docker}
+    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    timeout-seconds: 30
+    memory-limit-mb: 256
+    cpu-limit: 0.5
+  judge0:
+    rapidapi:
+      endpoint: ${JUDGE0_RAPIDAPI_ENDPOINT:https://judge0-ce.p.rapidapi.com}
+      api-key: ${RAPIDAPI_JUDGE0_KEY:}
+      api-host: ${JUDGE0_RAPIDAPI_HOST:judge0-ce.p.rapidapi.com}
+      timeout-seconds: ${JUDGE0_TIMEOUT_SECONDS:25}
+      poll-interval-ms: ${JUDGE0_POLL_INTERVAL_MS:1000}
+      max-poll-attempts: ${JUDGE0_MAX_POLL_ATTEMPTS:25}
+      memory-limit-mb: ${JUDGE0_MEMORY_LIMIT_MB:256}
+
+# Gateway (JWT validation, rate limit, CORS)
+gateway:
+  cors:
+    allowed-origins: ${GATEWAY_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  rate-limit:
+    max-requests: 5
+    window-duration-seconds: 60
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,refresh
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+    refresh:
+      enabled: true
+    shutdown:
+      enabled: false
+    env:
+      enabled: false
+    configprops:
+      enabled: false
+
+actuator:
+  refresh:
+    token: ${ACTUATOR_REFRESH_TOKEN:}
