@@ -19,6 +19,8 @@ jobs:
     strategy:
       matrix:
         service:
+          - name: config-server
+            path: ./config-server
           - name: auth-service
             path: ./auth-service
           - name: execution-service
