@@ -37,7 +37,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
+      - name: Build commons library
+        working-directory: ./codejam-commons
+        run: mvn clean install -DskipTests -q
+
+      - name: Build service
         working-directory: ${{ matrix.service.path }}
         run: mvn clean package -DskipTests -q
 
