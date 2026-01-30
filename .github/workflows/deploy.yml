@@ -2,12 +2,12 @@ name: Build, Push & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch: # Manual trigger
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/codejam
+  IMAGE_NAME: ${{ github.repository_owner }}/codejam
 
 jobs:
   build-and-push:
@@ -15,18 +15,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
-    strategy:
-      matrix:
-        service:
-          - name: config-server
-            path: ./config-server
-          - name: auth-service
-            path: ./auth-service
-          - name: execution-service
-            path: ./execution-service
-          - name: api-gateway
-            path: ./api-gateway
 
     steps:
       - name: Checkout repository
@@ -43,8 +31,7 @@ jobs:
         working-directory: ./codejam-commons
         run: mvn clean install -DskipTests -q
 
-      - name: Build service
-        working-directory: ${{ matrix.service.path }}
+      - name: Build application
         run: mvn clean package -DskipTests -q
 
       - name: Log in to Container Registry
@@ -58,7 +45,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
@@ -66,7 +53,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.service.path }}
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

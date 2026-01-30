@@ -34,109 +34,43 @@ services:
       timeout: 5s
       retries: 5
 
-  config-server:
-    image: ghcr.io/${GHCR_OWNER}/codejam-config-server:${IMAGE_TAG}
-    container_name: config-server
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: git
-      CONFIG_REPO_URL: ${CONFIG_REPO_URL}
-      CONFIG_GIT_BRANCH: main
-      GIT_USERNAME: ${GIT_USERNAME}
-      GIT_PASSWORD: ${GIT_PASSWORD}
-    networks:
-      - codejam-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  auth-service:
-    image: ghcr.io/${GHCR_OWNER}/codejam-auth-service:${IMAGE_TAG}
-    container_name: auth-service
+  codejam:
+    image: ghcr.io/${GHCR_OWNER}/codejam:${IMAGE_TAG}
+    container_name: codejam
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      config-server:
-        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      CONFIG_SERVER_URL: http://config-server:8888
+      # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # JWT
       JWT_SECRET: ${JWT_SECRET}
+      # URLs
       FRONTEND_URL: ${FRONTEND_URL}
       GATEWAY_BASE_URL: ${GATEWAY_BASE_URL}
-      OAUTH_SUCCESS_REDIRECT: ${FRONTEND_URL}/auth/callback
-      OAUTH_FAILURE_REDIRECT: ${FRONTEND_URL}/auth/login?error=oauth_failed
+      GATEWAY_CORS_ORIGINS: ${FRONTEND_URL}
+      # OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      OAUTH_SUCCESS_REDIRECT: ${FRONTEND_URL}/auth/callback
+      OAUTH_FAILURE_REDIRECT: ${FRONTEND_URL}/auth/login?error=oauth_failed
+      # Email
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
+      # OTP
       OTP_ENABLE_DYNAMIC: ${OTP_ENABLE_DYNAMIC}
-    networks:
-      - codejam-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  execution-service:
-    image: ghcr.io/${GHCR_OWNER}/codejam-execution-service:${IMAGE_TAG}
-    container_name: execution-service
-    restart: unless-stopped
-    depends_on:
-      config-server:
-        condition: service_healthy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      CONFIG_SERVER_URL: http://config-server:8888
-      JWT_SECRET: ${JWT_SECRET}
-    networks:
-      - codejam-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  api-gateway:
-    image: ghcr.io/${GHCR_OWNER}/codejam-api-gateway:${IMAGE_TAG}
-    container_name: api-gateway
-    restart: unless-stopped
-    depends_on:
-      config-server:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-      execution-service:
-        condition: service_healthy
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      CONFIG_SERVER_URL: http://config-server:8888
-      JWT_SECRET: ${JWT_SECRET}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      AUTH_SERVICE_URL: auth-service
-      AUTH_SERVICE_PORT: 8081
-      EXECUTION_SERVICE_URL: execution-service
-      EXECUTION_SERVICE_PORT: 8082
-      GATEWAY_CORS_ORIGINS: ${FRONTEND_URL}
     ports:
       - "8080:8080"
     networks:
@@ -146,7 +80,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
 
 volumes:
   codejam-postgres-data:
