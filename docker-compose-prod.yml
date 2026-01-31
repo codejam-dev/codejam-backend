@@ -84,6 +84,8 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       OTP_ENABLE_DYNAMIC: ${OTP_ENABLE_DYNAMIC}
+      # Disable mail health check (DigitalOcean blocks SMTP ports)
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     networks:
       - codejam-network
     healthcheck:
