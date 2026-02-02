@@ -8,64 +8,73 @@ on:
       force_all:
         description: 'Force rebuild all services'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/codejam
+  COMPOSE_PROJECT_NAME: codejam
 
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      commons: ${{ steps.changes.outputs.commons }}
-      config-server: ${{ steps.changes.outputs.config-server }}
-      auth-service: ${{ steps.changes.outputs.auth-service }}
-      execution-service: ${{ steps.changes.outputs.execution-service }}
-      api-gateway: ${{ steps.changes.outputs.api-gateway }}
-      any-service: ${{ steps.changes.outputs.any-service }}
-      docker-compose: ${{ steps.changes.outputs.docker-compose }}
+      commons: ${{ steps.filter.outputs.commons }}
+      config-server: ${{ steps.filter.outputs.config-server }}
+      auth-service: ${{ steps.filter.outputs.auth-service }}
+      execution-service: ${{ steps.filter.outputs.execution-service }}
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      docker-compose: ${{ steps.filter.outputs.docker-compose }}
+      any-service: ${{ steps.any.outputs.any }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Detect changes
-        id: changes
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            commons:
+              - 'codejam-commons/**'
+            config-server:
+              - 'config-server/**'
+            auth-service:
+              - 'auth-service/**'
+            execution-service:
+              - 'execution-service/**'
+            api-gateway:
+              - 'api-gateway/**'
+            docker-compose:
+              - 'docker-compose-prod.yml'
+
+      - name: Force rebuild override
+        if: github.event.inputs.force_all == 'true'
         run: |
-          if [[ "${{ github.event.inputs.force_all }}" == "true" ]]; then
-            echo "Force rebuild requested"
-            echo "commons=true" >> $GITHUB_OUTPUT
-            echo "config-server=true" >> $GITHUB_OUTPUT
-            echo "auth-service=true" >> $GITHUB_OUTPUT
-            echo "execution-service=true" >> $GITHUB_OUTPUT
-            echo "api-gateway=true" >> $GITHUB_OUTPUT
-            echo "any-service=true" >> $GITHUB_OUTPUT
-            echo "docker-compose=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          echo "commons=true" >> $GITHUB_OUTPUT
+          echo "config-server=true" >> $GITHUB_OUTPUT
+          echo "auth-service=true" >> $GITHUB_OUTPUT
+          echo "execution-service=true" >> $GITHUB_OUTPUT
+          echo "api-gateway=true" >> $GITHUB_OUTPUT
+          echo "docker-compose=true" >> $GITHUB_OUTPUT
+        id: force
 
-          # Get changed files
-          CHANGED=$(git diff --name-only HEAD^ HEAD 2>/dev/null || git diff --name-only HEAD)
-          echo "Changed files:"
-          echo "$CHANGED"
-
-          # Check each path
-          echo "commons=$([[ $CHANGED == *"codejam-commons/"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "config-server=$([[ $CHANGED == *"config-server/"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "auth-service=$([[ $CHANGED == *"auth-service/"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "execution-service=$([[ $CHANGED == *"execution-service/"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "api-gateway=$([[ $CHANGED == *"api-gateway/"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "docker-compose=$([[ $CHANGED == *"docker-compose"* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
-
-          # Check if any service changed
-          if [[ $CHANGED == *"config-server/"* ]] || [[ $CHANGED == *"auth-service/"* ]] || \
-             [[ $CHANGED == *"execution-service/"* ]] || [[ $CHANGED == *"api-gateway/"* ]] || \
-             [[ $CHANGED == *"codejam-commons/"* ]]; then
-            echo "any-service=true" >> $GITHUB_OUTPUT
+      - name: Aggregate service changes
+        id: any
+        run: |
+          if [[ \
+            "${{ steps.filter.outputs.commons }}" == "true" || \
+            "${{ steps.filter.outputs.config-server }}" == "true" || \
+            "${{ steps.filter.outputs.auth-service }}" == "true" || \
+            "${{ steps.filter.outputs.execution-service }}" == "true" || \
+            "${{ steps.filter.outputs.api-gateway }}" == "true" || \
+            "${{ github.event.inputs.force_all }}" == "true" \
+          ]]; then
+            echo "any=true" >> $GITHUB_OUTPUT
           else
-            echo "any-service=false" >> $GITHUB_OUTPUT
+            echo "any=false" >> $GITHUB_OUTPUT
           fi
 
   build-commons:
@@ -75,15 +84,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and cache commons
-        working-directory: ./codejam-commons
+      - name: Build commons
+        working-directory: codejam-commons
         run: mvn clean install -DskipTests -q
 
       - name: Upload commons artifact
@@ -94,7 +102,7 @@ jobs:
           retention-days: 1
 
   build-service:
-    needs: [detect-changes, build-commons]
+    needs: detect-changes
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -104,122 +112,106 @@ jobs:
       matrix:
         include:
           - name: config-server
-            path: ./config-server
-            changed: config-server
+            path: config-server
+            flag: config-server
           - name: auth-service
-            path: ./auth-service
-            changed: auth-service
+            path: auth-service
+            flag: auth-service
           - name: execution-service
-            path: ./execution-service
-            changed: execution-service
+            path: execution-service
+            flag: execution-service
           - name: api-gateway
-            path: ./api-gateway
-            changed: api-gateway
+            path: api-gateway
+            flag: api-gateway
 
     steps:
-      - name: Check if build needed
-        id: check
+      - name: Decide build
+        id: decide
         run: |
-          SERVICE_CHANGED="${{ needs.detect-changes.outputs[matrix.changed] }}"
-          COMMONS_CHANGED="${{ needs.detect-changes.outputs.commons }}"
-          if [[ "$SERVICE_CHANGED" == "true" ]] || [[ "$COMMONS_CHANGED" == "true" ]]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "Building ${{ matrix.name }} (service=$SERVICE_CHANGED, commons=$COMMONS_CHANGED)"
+          if [[ "${{ needs.detect-changes.outputs[matrix.flag] }}" == "true" || \
+                "${{ needs.detect-changes.outputs.commons }}" == "true" ]]; then
+            echo "build=true" >> $GITHUB_OUTPUT
           else
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            echo "Skipping ${{ matrix.name }} - no changes"
+            echo "build=false" >> $GITHUB_OUTPUT
           fi
 
       - uses: actions/checkout@v4
-        if: steps.check.outputs.should_build == 'true'
+        if: steps.decide.outputs.build == 'true'
 
-      - name: Set up JDK 21
-        if: steps.check.outputs.should_build == 'true'
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
+        if: steps.decide.outputs.build == 'true'
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
-      - name: Download commons artifact
-        if: steps.check.outputs.should_build == 'true'
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
+        if: steps.decide.outputs.build == 'true'
         with:
           name: commons-jar
           path: ~/.m2/repository/com/codejam/
 
       - name: Build service
-        if: steps.check.outputs.should_build == 'true'
+        if: steps.decide.outputs.build == 'true'
         working-directory: ${{ matrix.path }}
         run: mvn clean package -DskipTests -q
 
-      - name: Log in to Container Registry
-        if: steps.check.outputs.should_build == 'true'
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
+        if: steps.decide.outputs.build == 'true'
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        if: steps.check.outputs.should_build == 'true'
+      - uses: docker/metadata-action@v5
+        if: steps.decide.outputs.build == 'true'
         id: meta
-        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}
           tags: |
-            type=sha,prefix=
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
-        if: steps.check.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
+        if: steps.decide.outputs.build == 'true'
         with:
           context: ${{ matrix.path }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: [detect-changes, build-service]
-    if: always() && (needs.detect-changes.outputs.any-service == 'true' || needs.detect-changes.outputs.docker-compose == 'true')
+    if: needs.detect-changes.outputs.any-service == 'true' || needs.detect-changes.outputs.docker-compose == 'true'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy docker-compose to droplet
-        uses: appleboy/scp-action@v0.1.7
+      - uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: "docker-compose-prod.yml"
-          target: "~/codejam"
+          source: docker-compose-prod.yml
+          target: ~/codejam
 
-      - name: Deploy to DigitalOcean Droplet
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
+            export COMPOSE_PROJECT_NAME=codejam
             cd ~/codejam
 
-            # Create workspace dir for code execution
             mkdir -p /tmp/codejam-workspace
 
-            # Login to GHCR
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
 
-            # Pull new images and restart (remove orphan containers)
-            docker compose -f docker-compose-prod.yml pull
-            docker compose -f docker-compose-prod.yml up -d --force-recreate --remove-orphans
+            docker compose down --remove-orphans
+            docker compose pull
+            docker compose up -d
 
-            # Cleanup old/unused resources
-            docker image prune -f
-            docker container prune -f
-
-            # Show status
-            echo "=== Deployment Status ==="
-            docker compose -f docker-compose-prod.yml ps
+            docker compose ps
