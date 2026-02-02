@@ -13,17 +13,11 @@ spring:
 
 app:
   executor:
-    type: judge0
-
-  judge0:
-    rapidapi:
-      endpoint: ${JUDGE0_RAPIDAPI_ENDPOINT:https://judge0-ce.p.rapidapi.com}
-      api-key: ${RAPIDAPI_JUDGE0_KEY:}
-      api-host: ${JUDGE0_RAPIDAPI_HOST:judge0-ce.p.rapidapi.com}
-      timeout-seconds: ${JUDGE0_TIMEOUT_SECONDS:25}
-      poll-interval-ms: ${JUDGE0_POLL_INTERVAL_MS:1000}
-      max-poll-attempts: ${JUDGE0_MAX_POLL_ATTEMPTS:25}
-      memory-limit-mb: ${JUDGE0_MEMORY_LIMIT_MB:256}
+    type: docker
+    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    timeout-seconds: 30
+    memory-limit-mb: 256
+    cpu-limit: 0.5
 
 logging:
   level:
