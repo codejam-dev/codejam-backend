@@ -100,12 +100,13 @@ jobs:
             # Login to GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-            # Pull new images and restart
+            # Pull new images and restart (remove orphan containers)
             docker compose -f docker-compose-prod.yml pull
-            docker compose -f docker-compose-prod.yml up -d --force-recreate
+            docker compose -f docker-compose-prod.yml up -d --force-recreate --remove-orphans
 
-            # Cleanup old images
+            # Cleanup old/unused resources
             docker image prune -f
+            docker container prune -f
 
             # Show status
             echo "=== Deployment Status ==="
