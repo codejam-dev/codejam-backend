@@ -102,16 +102,32 @@ public class DockerExecutor implements CodeExecutor {
 
     private Path createSourceFile(CodeSubmission submission) throws IOException {
         String ext = submission.getLanguage().getExtension();
+        Path baseDir = getWorkspaceDir();
+
         if (submission.getLanguage() == CodeSubmission.Language.JAVA) {
             String className = extractJavaClassName(submission.getCode());
-            Path dir = Files.createTempDirectory("codejam-");
+            Path dir = Files.createTempDirectory(baseDir, "codejam-");
             Path file = dir.resolve(className + ext);
             Files.writeString(file, submission.getCode());
             return file;
         }
-        Path file = Files.createTempFile("codejam-", ext);
+        Path dir = Files.createTempDirectory(baseDir, "codejam-");
+        Path file = dir.resolve("code" + ext);
         Files.writeString(file, submission.getCode());
         return file;
+    }
+
+    private Path getWorkspaceDir() throws IOException {
+        String hostPath = microserviceConfig.getExecutor().getWorkspaceHostPath();
+        if (hostPath != null && !hostPath.isEmpty()) {
+            Path dir = Path.of(hostPath);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+            }
+            return dir;
+        }
+        // Fallback to system temp (works for non-Docker or local dev)
+        return Path.of(System.getProperty("java.io.tmpdir"));
     }
 
     private String extractJavaClassName(String code) {

@@ -104,10 +104,13 @@ services:
         condition: service_healthy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/codejam-workspace:/tmp/codejam-workspace
     environment:
       SPRING_PROFILES_ACTIVE: prod
       CONFIG_SERVER_URL: http://config-server:8888
       JWT_SECRET: ${JWT_SECRET}
+      # Docker-in-Docker: use host path for code files
+      CODEJAM_WORKSPACE_HOST_PATH: /tmp/codejam-workspace
     networks:
       - codejam-network
     healthcheck:

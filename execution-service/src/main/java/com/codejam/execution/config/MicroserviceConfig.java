@@ -51,18 +51,24 @@ public class MicroserviceConfig {
         private Long timeoutSeconds = 30L;
         private Long memoryLimitMB = 256L;
         private Double cpuLimit = 0.5;
-        
+        // For Docker-in-Docker: host path for code files (must be same path inside and outside container)
+        private String workspaceHostPath;
+
         // Getters for compatibility (Lombok @Data generates these, but explicit for clarity)
         public long getTimeoutSeconds() {
             return timeoutSeconds != null ? timeoutSeconds : 30L;
         }
-        
+
         public long getMemoryLimitMB() {
             return memoryLimitMB != null ? memoryLimitMB : 256L;
         }
-        
+
         public double getCpuLimit() {
             return cpuLimit != null ? cpuLimit : 0.5;
+        }
+
+        public String getWorkspaceHostPath() {
+            return workspaceHostPath;
         }
     }
 

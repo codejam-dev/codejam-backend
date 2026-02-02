@@ -19,6 +19,7 @@ app:
     timeout-seconds: 30
     memory-limit-mb: 256
     cpu-limit: 0.5
+    workspace-host-path: ${CODEJAM_WORKSPACE_HOST_PATH:}
 
   judge0:
     rapidapi:
