@@ -24,8 +24,8 @@ public class CodeSubmission {
     @Getter
     public enum Language {
         JAVASCRIPT("javascript", "node:20-alpine", ".js", "node"),
-        PYTHON("python", "python:3.11-alpine", ".py", "python"),
-        JAVA("java", "eclipse-temurin:21-jdk-jammy", ".java", "javac");
+        PYTHON("python", "python:3.12-alpine", ".py", "python"),
+        JAVA("java", "eclipse-temurin:21-jdk-alpine", ".java", "javac");
 //        CPP("cpp", "frolvlad/alpine-gcc", ".cpp", "g++"),
 //        C("c", "frolvlad/alpine-gcc", ".c", "gcc"),
 //        GO("go", "golang:1.21-alpine", ".go", "go run"),
