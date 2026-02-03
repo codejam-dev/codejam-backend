@@ -14,16 +14,10 @@ ROOT_DIR=$(pwd)
 build_service() {
     local service=$1
     local emoji=$2
-    
+
     echo "$emoji Building $service..."
     cd "$ROOT_DIR/$service" || exit 1
-    
-    if [ "$service" == "codejam-commons" ]; then
-        mvn clean install -DskipTests
-    else
-        mvn clean package -DskipTests
-    fi
-    
+    mvn clean package -DskipTests -q
     echo "✅ $service built successfully"
     echo ""
 }
@@ -73,8 +67,18 @@ fi
 
 echo ""
 
-# Always build codejam-commons first
-build_service "codejam-commons" "📦"
+# Get commons version from auth-service pom.xml (all services use same version)
+COMMONS_VERSION=$(grep -m1 '<codejam-commons.version>' "$ROOT_DIR/auth-service/pom.xml" | sed 's/.*>\(.*\)<.*/\1/')
+echo "📦 Commons version: $COMMONS_VERSION"
+echo ""
+
+# Build codejam-commons with the correct version
+echo "📦 Building codejam-commons..."
+cd "$ROOT_DIR/codejam-commons" || exit 1
+mvn versions:set -DnewVersion="$COMMONS_VERSION" -DgenerateBackupPoms=false -q
+mvn clean install -DskipTests -q
+echo "✅ codejam-commons built successfully"
+echo ""
 
 # Build requested services
 for service in "${SERVICES_TO_BUILD[@]}"; do
