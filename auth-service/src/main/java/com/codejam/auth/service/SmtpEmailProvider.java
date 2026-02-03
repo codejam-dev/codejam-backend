@@ -1,5 +1,6 @@
 package com.codejam.auth.service;
 
+import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.service.email.provider.EmailProvider;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class SmtpEmailProvider implements EmailProvider {
 
     private final JavaMailSender mailSender;
+    private final MicroserviceConfig microserviceConfig;
 
     @Override
     public void sendEmail(String toEmail, String subject, String htmlContent) {
@@ -23,9 +25,9 @@ public class SmtpEmailProvider implements EmailProvider {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
-            helper.setTo(to);
+            helper.setTo(toEmail);
             helper.setSubject(subject);
-            helper.setText(htmlBody, true);
+            helper.setText(htmlContent, true);
 
             mailSender.send(message);
         } catch (Exception e) {

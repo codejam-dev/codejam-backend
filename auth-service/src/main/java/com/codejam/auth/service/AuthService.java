@@ -148,7 +148,8 @@ public class AuthService {
         String resetToken = UUID.randomUUID().toString();
         String redisKey = proxyUtils.generateRedisKey("resetToken", user.getEmail());
         redisService.set(redisKey,resetToken,microserviceConfig.getResetTokenExpiration());
-        emailService.sendResetPasswordEmail(user.getEmail(), resetToken);
+        String resetLink = microserviceConfig.getFrontendUrl() + "/auth/reset-password?token=" + resetToken + "&email=" + user.getEmail();
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
         return BaseResponse.success("Password reset email sent");
     }
 

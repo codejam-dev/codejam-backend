@@ -31,7 +31,7 @@ public class OtpService {
         if (microserviceConfig.getOtp().isEnableDynamic()) {
             otp = String.valueOf(100000 + secureRandom.nextInt(900000));
             transactionId = UUID.randomUUID().toString();
-            emailService.sendOtpVerificationEmail(email, otp);
+            emailService.sendOtpEmail(email, otp);
         } else {
             otp = microserviceConfig.getOtp().getTestValue();
             transactionId = microserviceConfig.getOtp().getTestTransactionId() != null 
