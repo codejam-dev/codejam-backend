@@ -193,3 +193,4 @@ jwt.secret=default-secret  # Used if env var not set
 - **Services**: Connect to Config Server to get their configs
 - **Refresh**: Services can refresh configs without restart via `/actuator/refresh`
 
+# Trigger rebuild 2026-02-03
