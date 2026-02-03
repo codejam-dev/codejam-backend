@@ -77,32 +77,9 @@ jobs:
             echo "any=false" >> $GITHUB_OUTPUT
           fi
 
-  build-commons:
+  build-services:
     needs: detect-changes
-    if: needs.detect-changes.outputs.commons == 'true' || needs.detect-changes.outputs.any-service == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build commons
-        working-directory: codejam-commons
-        run: mvn clean install -DskipTests -q
-
-      - name: Upload commons artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: commons-jar
-          path: ~/.m2/repository/com/codejam/
-          retention-days: 1
-
-  build-service:
-    needs: detect-changes
+    if: needs.detect-changes.outputs.any-service == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -125,11 +102,12 @@ jobs:
             flag: api-gateway
 
     steps:
-      - name: Decide build
+      - name: Decide if service needs build
         id: decide
         run: |
           if [[ "${{ needs.detect-changes.outputs[matrix.flag] }}" == "true" || \
-                "${{ needs.detect-changes.outputs.commons }}" == "true" ]]; then
+                "${{ needs.detect-changes.outputs.commons }}" == "true" || \
+                "${{ github.event.inputs.force_all }}" == "true" ]]; then
             echo "build=true" >> $GITHUB_OUTPUT
           else
             echo "build=false" >> $GITHUB_OUTPUT
@@ -145,11 +123,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - uses: actions/download-artifact@v4
+      - name: Build commons library
         if: steps.decide.outputs.build == 'true'
-        with:
-          name: commons-jar
-          path: ~/.m2/repository/com/codejam/
+        working-directory: codejam-commons
+        run: mvn clean install -DskipTests -q
 
       - name: Build service
         if: steps.decide.outputs.build == 'true'
@@ -183,10 +160,16 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: [detect-changes, build-service]
-    if: needs.detect-changes.outputs.any-service == 'true' || needs.detect-changes.outputs.docker-compose == 'true'
+    needs: [detect-changes, build-services]
+    if: always() && (needs.detect-changes.outputs.any-service == 'true' || needs.detect-changes.outputs.docker-compose == 'true')
     runs-on: ubuntu-latest
     steps:
+      - name: Check build status
+        if: needs.build-services.result == 'failure'
+        run: |
+          echo "Build failed, skipping deploy"
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: appleboy/scp-action@v0.1.7
@@ -210,8 +193,8 @@ jobs:
 
             docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
 
-            docker compose down --remove-orphans
-            docker compose pull
-            docker compose up -d
+            docker compose -f docker-compose-prod.yml down --remove-orphans
+            docker compose -f docker-compose-prod.yml pull
+            docker compose -f docker-compose-prod.yml up -d
 
-            docker compose ps
+            docker compose -f docker-compose-prod.yml ps
