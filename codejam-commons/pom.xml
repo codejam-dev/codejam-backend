@@ -11,7 +11,7 @@
 
 	<groupId>com.codejam</groupId>
 	<artifactId>codejam-commons</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 	<name>codejam-commons</name>
 	<description>Shared common library for CodeJam services</description>
@@ -91,6 +91,15 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
+
+	<!-- GitHub Packages Distribution -->
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/${env.GITHUB_REPOSITORY}</url>
+		</repository>
+	</distributionManagement>
 
 	<build>
 		<plugins>
