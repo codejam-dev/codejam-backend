@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       force_all:
-        description: 'Force rebuild all services'
+        description: "Force rebuild all services"
         required: false
         default: false
         type: boolean
@@ -24,13 +24,13 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      commons: ${{ steps.filter.outputs.commons }}
-      config-server: ${{ steps.filter.outputs.config-server }}
-      auth-service: ${{ steps.filter.outputs.auth-service }}
-      execution-service: ${{ steps.filter.outputs.execution-service }}
-      api-gateway: ${{ steps.filter.outputs.api-gateway }}
-      docker-compose: ${{ steps.filter.outputs.docker-compose }}
-      any-service: ${{ steps.any.outputs.any }}
+      commons: ${{ steps.filter.outputs.commons || steps.force.outputs.commons }}
+      config-server: ${{ steps.filter.outputs.config-server|| steps.force.outputs.commons }}
+      auth-service: ${{ steps.filter.outputs.auth-service|| steps.force.outputs.commons}}
+      execution-service: ${{ steps.filter.outputs.execution-service|| steps.force.outputs.commons }}
+      api-gateway: ${{ steps.filter.outputs.api-gateway|| steps.force.outputs.commons }}
+      docker-compose: ${{ steps.filter.outputs.docker-compose|| steps.force.outputs.commons }}
+      any-service: ${{ steps.any.outputs.any|| steps.force.outputs.commons }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,8 +123,8 @@ jobs:
       - uses: actions/setup-java@v4
         if: steps.decide.outputs.build == 'true'
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
           cache: maven
 
       - name: Set up Docker Buildx
