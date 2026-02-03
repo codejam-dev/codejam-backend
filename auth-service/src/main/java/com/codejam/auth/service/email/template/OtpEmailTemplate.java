@@ -1,65 +1,19 @@
-package com.codejam.auth.service;
+package com.codejam.auth.service.email.template;
 
-import com.codejam.auth.config.MicroserviceConfig;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.stereotype.Service;
+public class OtpEmailTemplate implements EmailTemplate {
+    private final String otp;
 
-import java.io.UnsupportedEncodingException;
-
-@Service
-@RequiredArgsConstructor
-public class EmailService {
-
-    private final JavaMailSender mailSender;
-    private final MicroserviceConfig microserviceConfig;
-    Logger logger = LoggerFactory.getLogger(EmailService.class);
-
-    public void sendOtpVerificationEmail(String toEmail, String otp) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
-            helper.setTo(toEmail);
-            helper.setSubject("🔐 Your OTP for CodeJam - " + otp);
-            String htmlContent = createOtpEmailTemplate(otp);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            System.out.println("OTP verification email sent to: " + toEmail);
-        } catch (MessagingException | UnsupportedEncodingException e) {
-            throw new RuntimeException("Failed to send OTP verification email", e);
-        }
+    public OtpEmailTemplate(String otp) {
+        this.otp = otp;
     }
 
-    public void sendResetPasswordEmail(String toEmail, String resetToken) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(new InternetAddress(microserviceConfig.getMailUsername(), "CodeJam"));
-            helper.setTo(toEmail);
-            helper.setSubject("🔑 Password Reset Request for CodeJam");
-            String resetLink = microserviceConfig.getFrontendUrl() + "/auth/reset-password?token=" + resetToken + "&email=" + toEmail;
-            logger.debug("Reset link: {}", resetLink);
-            String htmlContent = createResetPasswordEmailTemplate(resetLink);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            System.out.println("Password reset email sent to: " + toEmail);
-        } catch (MessagingException | UnsupportedEncodingException e) {
-            throw new RuntimeException("Failed to send password reset email", e);
-        }
+    @Override
+    public String getSubject() {
+        return "🔐 Your OTP for CodeJam - " + otp;
     }
 
-    private String createOtpEmailTemplate(String otp) {
+    @Override
+    public String getHtmlBody() {
         return """
             <!DOCTYPE html>
             <html lang="en">
@@ -208,24 +162,4 @@ public class EmailService {
             </html>
             """.replace("{}", otp);
     }
-
-    private String createResetPasswordEmailTemplate(String resetLink) {
-        return """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Password Reset</title>
-            </head>
-            <body>
-                <h2>Password Reset Request</h2>
-                <p>Click the link below to reset your password:</p>
-                <a href="{}">Reset Password</a>
-                <p>If you did not request a password reset, please ignore this email.</p>
-            </body>
-            </html>
-            """.replace("{}", resetLink);
-    }
 }
-

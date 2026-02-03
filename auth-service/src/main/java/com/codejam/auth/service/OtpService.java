@@ -2,6 +2,7 @@ package com.codejam.auth.service;
 
 import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.dto.request.ValidateOtpRequest;
+import com.codejam.auth.service.email.EmailService;
 import com.codejam.commons.util.ObjectUtils;
 import com.codejam.commons.service.RedisService;
 import com.codejam.commons.util.proxyUtils;

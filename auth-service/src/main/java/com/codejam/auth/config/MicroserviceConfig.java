@@ -69,6 +69,8 @@ public class MicroserviceConfig {
         private int maxAttempts = 5;
         private String testValue;
         private String testTransactionId;
+        private String fromEmail;
+
     }
 
 
