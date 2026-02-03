@@ -1,0 +1,70 @@
+name: Publish Commons Library
+
+on:
+  push:
+    tags:
+      - 'commons-v*'  # Trigger on tags like commons-v1.0.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag or input
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract version from tag (commons-v1.0.0 -> 1.0.0)
+            VERSION="${GITHUB_REF_NAME#commons-v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Set version in pom.xml
+        working-directory: codejam-commons
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.version.outputs.version }} -DgenerateBackupPoms=false
+
+      - name: Build and publish to GitHub Packages
+        working-directory: codejam-commons
+        run: |
+          mvn clean deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release notes
+        run: |
+          echo "## codejam-commons v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Published to GitHub Packages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage in services" >> $GITHUB_STEP_SUMMARY
+          echo '```xml' >> $GITHUB_STEP_SUMMARY
+          echo '<dependency>' >> $GITHUB_STEP_SUMMARY
+          echo '    <groupId>com.codejam</groupId>' >> $GITHUB_STEP_SUMMARY
+          echo '    <artifactId>codejam-commons</artifactId>' >> $GITHUB_STEP_SUMMARY
+          echo "    <version>${{ steps.version.outputs.version }}</version>" >> $GITHUB_STEP_SUMMARY
+          echo '</dependency>' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
