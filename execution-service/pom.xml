@@ -19,14 +19,17 @@
 		<java.version>21</java.version>
 		<lombok.version>1.18.36</lombok.version>
 		<spring-cloud.version>2024.0.0</spring-cloud.version>
+		<codejam-commons.version>1.0.0</codejam-commons.version>
 	</properties>
 
+	<!-- GitHub Packages repo configured via settings.xml in CI -->
+
 	<dependencies>
-		<!-- CodeJam Commons -->
+		<!-- CodeJam Commons (local: mvn install, CI: GitHub Packages) -->
 		<dependency>
 			<groupId>com.codejam</groupId>
 			<artifactId>codejam-commons</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>${codejam-commons.version}</version>
 		</dependency>
 
 		<!-- Spring Boot Starters -->
