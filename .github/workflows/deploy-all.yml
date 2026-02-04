@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docker-compose-prod.yml'
+      - 'docker-compose.yml'
   workflow_dispatch:
     inputs:
       force_rebuild:
@@ -130,7 +130,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: docker-compose-prod.yml
+          source: docker-compose.yml
           target: ~/codejam
 
       - uses: appleboy/ssh-action@v1.0.3
@@ -146,8 +146,8 @@ jobs:
 
             docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
 
-            docker compose -f docker-compose-prod.yml down --remove-orphans
-            docker compose -f docker-compose-prod.yml pull
-            docker compose -f docker-compose-prod.yml up -d
+            docker compose -f docker-compose.yml down --remove-orphans
+            docker compose -f docker-compose.yml pull
+            docker compose -f docker-compose.yml up -d
 
-            docker compose -f docker-compose-prod.yml ps
+            docker compose -f docker-compose.yml ps

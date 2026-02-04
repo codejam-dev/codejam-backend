@@ -94,7 +94,7 @@ jobs:
             docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
 
             # Pull and restart only this service
-            docker compose -f docker-compose-prod.yml pull ${{ env.SERVICE_NAME }}
-            docker compose -f docker-compose-prod.yml up -d ${{ env.SERVICE_NAME }}
+            docker compose -f docker-compose.yml pull ${{ env.SERVICE_NAME }}
+            docker compose -f docker-compose.yml up -d ${{ env.SERVICE_NAME }}
 
-            docker compose -f docker-compose-prod.yml ps ${{ env.SERVICE_NAME }}
+            docker compose -f docker-compose.yml ps ${{ env.SERVICE_NAME }}
