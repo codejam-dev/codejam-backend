@@ -32,29 +32,14 @@ public class MicroserviceConfig {
         return executor;
     }
 
-    private Judge0Config judge0 = new Judge0Config();
-
-    /**
-     * Get Judge0 config, ensuring it's never null
-     */
-    public Judge0Config getJudge0() {
-        if (judge0 == null) {
-            judge0 = new Judge0Config();
-        }
-        return judge0;
-    }
-
     @Data
     public static class ExecutionConfig {
-        private String type = "docker";
         private String dockerHost = "unix:///var/run/docker.sock";
         private Long timeoutSeconds = 30L;
         private Long memoryLimitMB = 256L;
         private Double cpuLimit = 0.5;
-        // For Docker-in-Docker: host path for code files (must be same path inside and outside container)
         private String workspaceHostPath;
 
-        // Getters for compatibility (Lombok @Data generates these, but explicit for clarity)
         public long getTimeoutSeconds() {
             return timeoutSeconds != null ? timeoutSeconds : 30L;
         }
@@ -70,17 +55,5 @@ public class MicroserviceConfig {
         public String getWorkspaceHostPath() {
             return workspaceHostPath;
         }
-    }
-
-    @Data
-    @ConfigurationProperties(prefix = "app.judge0.rapidapi")
-    public static class Judge0Config {
-        private String endpoint = "https://judge0-ce.p.rapidapi.com";
-        private String apiKey;
-        private String apiHost = "judge0-ce.p.rapidapi.com";
-        private Integer timeoutSeconds = 25;
-        private Integer pollIntervalMs = 1000;
-        private Integer maxPollAttempts = 25;
-        private Long memoryLimitMB = 256L;
     }
 }

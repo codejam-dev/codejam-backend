@@ -33,7 +33,7 @@ public class ExecutionController {
         } catch (RateLimitExceededException e) {
             log.warn("Rate limit exceeded for room: {}", submission.getRoomId());
             ExecutionResult rateLimitResult = ExecutionResult.systemError(
-                submission.getRoomId(), 
+                submission.getRoomId(),
                 e.getMessage()
             );
             return ResponseEntity.ok(rateLimitResult);

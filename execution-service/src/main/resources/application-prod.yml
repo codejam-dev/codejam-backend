@@ -13,7 +13,6 @@ spring:
 
 app:
   executor:
-    type: docker
     docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
     timeout-seconds: 30
     memory-limit-mb: 256
