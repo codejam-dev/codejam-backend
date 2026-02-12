@@ -15,8 +15,7 @@ public class Constants {
             "/v1/api/auth/oauth2/callback/google",
             "/v1/api/auth/oauth/exchange",
             "/v1/api/auth/resetPassword",
-            "/v1/api/auth/validateResetToken",
-            "/v1/api/execution/run"  // Playground endpoint - temporarily public
+            "/v1/api/auth/validateResetToken"
     );
 
     // Scopes required for OTP endpoints

@@ -159,6 +159,7 @@ services:
       AUTH_SERVICE_PORT: 8081
       EXECUTION_SERVICE_URL: execution-service
       EXECUTION_SERVICE_PORT: 8082
+      GATEWAY_CORS_ORIGINS: ${FRONTEND_URL}
     ports:
       - "8080:8080"
     networks:
