@@ -12,8 +12,8 @@ jwt:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   oauth:
-    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:3000/auth/callback}
-    failure-redirect: ${OAUTH_FAILURE_REDIRECT:http://localhost:3000/auth/login?error=oauth_failed}
+    success-redirect: ${FRONTEND_URL:http://localhost:3000}/auth/callback
+    failure-redirect: ${FRONTEND_URL:http://localhost:3000}/auth/login?error=oauth_failed
   otp:
     enable-dynamic: ${OTP_ENABLE_DYNAMIC:false}
 
