@@ -5,7 +5,7 @@ server:
 
 # JWT Configuration - Must be provided via environment variable
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:codejam-local-dev-secret-key-change-in-production}
   expiration: ${JWT_EXPIRATION:86400000}
 
 # Application Configuration
@@ -23,8 +23,8 @@ spring:
     name: auth-service
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    username: ${SPRING_DATASOURCE_USERNAME:codejam}
+    password: ${SPRING_DATASOURCE_PASSWORD:codejam123}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -50,8 +50,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:disabled}
+            client-secret: ${GOOGLE_CLIENT_SECRET:disabled}
             scope: profile,email
             redirect-uri: "${GATEWAY_BASE_URL:http://localhost:8080}/v1/api/auth/oauth2/callback/{registrationId}"
         provider:
@@ -69,8 +69,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -88,7 +88,7 @@ email:
 
 # Resend API Configuration (from-email comes from config server)
 resend:
-  api-key: ${RESEND_API_KEY}
+  api-key: ${RESEND_API_KEY:}
   from-email: ${RESEND_FROM_EMAIL:noreply@localhost}
 
 # Actuator Configuration (Kubernetes-first)
