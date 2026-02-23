@@ -1,264 +1,217 @@
 # CodeJam Backend
 
-Microservices backend for CodeJam - Real-time collaborative coding platform with secure authentication and authorization.
+Microservices backend for CodeJam - a real-time collaborative coding platform with secure code execution, authentication, and centralized configuration.
 
 ## Architecture
 
-The backend follows a microservices architecture with the following components:
+```
+                    ┌─────────────────┐
+                    │   Frontend      │
+                    │  (Next.js)      │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  API Gateway    │ :8080
+                    │  (JWT + CORS)   │
+                    └──┬──────────┬───┘
+                       │          │
+              ┌────────▼──┐  ┌───▼──────────┐
+              │ Auth      │  │ Execution    │
+              │ Service   │  │ Service      │
+              │ :8081     │  │ :8082        │
+              └──┬────┬───┘  └──┬───────────┘
+                 │    │         │
+           ┌─────▼┐ ┌▼─────┐ ┌─▼──────┐
+           │Postgres│ │Redis │ │Docker  │
+           │ :5432  │ │:6379 │ │Engine  │
+           └───────┘ └──────┘ └────────┘
 
-- **api-gateway**: API Gateway (Spring Cloud Gateway) - Single entry point, handles JWT validation and routing
-- **auth-service**: Authentication and authorization service - User management, OAuth, JWT generation
-- **config-server**: Configuration server - Centralized configuration management (optional)
-- **codejam-commons**: Shared library - Common utilities, DTOs, exceptions, Redis service
+           ┌──────────────────────────┐
+           │   Config Server :8888    │
+           │  (Spring Cloud Config)   │
+           └──────────────────────────┘
+```
 
 ## Services
 
-### API Gateway
-- **Port**: 8080
-- **Responsibilities**:
-  - JWT token validation and extraction
-  - Route requests to appropriate services
-  - CORS handling
-  - User info extraction from JWT and passing as headers to downstream services
-  - PKCE code_challenge validation for OAuth flows
+| Service | Port | Description |
+|---------|------|-------------|
+| **api-gateway** | 8080 | Entry point - JWT validation, routing, CORS |
+| **auth-service** | 8081 | Authentication, OAuth, email verification |
+| **execution-service** | 8082 | Code execution in isolated Docker containers |
+| **config-server** | 8888 | Centralized config management (optional locally) |
+| **codejam-commons** | - | Shared library (DTOs, exceptions, JWT utils, Redis) |
 
-### Auth Service
-- **Port**: 8081
-- **Responsibilities**:
-  - User registration and login
-  - Email verification via OTP
-  - Google OAuth with PKCE
-  - JWT token generation (temp tokens for unverified users, full tokens for verified)
-  - User management
+## Tech Stack
 
-### Config Server (Optional)
-- **Port**: 8888
-- **Responsibilities**:
-  - Centralized configuration management
-  - Supports Git-based or native file-based configuration
-  - Dynamic configuration refresh
+- Java 21, Spring Boot 3.4.10, Spring Cloud 2024.0.0
+- PostgreSQL 15, Redis 7
+- Docker (code execution sandboxing)
+- Maven, GitHub Actions, GitHub Packages (GHCR)
 
-## Authentication Flow
-
-### Registration Flow
-```
-1. POST /v1/api/auth/register
-   → Creates user with enabled=false
-   → Returns temp token (15 min expiry, isEnabled=false)
-
-2. POST /v1/api/auth/generateOtp
-   Header: Authorization: Bearer <TEMP_TOKEN>
-   → Extracts email from token
-   → Generates OTP, stores in Redis (5 min expiry)
-   → Returns transactionId
-
-3. POST /v1/api/auth/validateOtp
-   Header: Authorization: Bearer <TEMP_TOKEN>
-   Body: { otp, transactionId }
-   → Validates OTP from Redis
-   → Sets user.enabled = true
-   → Returns full token (7 days expiry, isEnabled=true)
-```
-
-### Login Flow
-```
-1. POST /v1/api/auth/login
-   Body: { email, password }
-   → If user.enabled=false:
-     Returns temp token (15 min expiry)
-     Frontend redirects to OTP verification
-   → If user.enabled=true:
-     Returns full token (7 days expiry)
-     Frontend redirects to dashboard
-```
-
-### OAuth Flow (Google with PKCE)
-```
-1. Frontend generates PKCE code_verifier and code_challenge
-2. GET /v1/api/auth/oauth2/authorization/google?code_challenge=...&code_challenge_method=S256
-   → Backend stores code_challenge in session
-   → Redirects to Google OAuth
-3. Google redirects back with code
-4. Backend validates, creates/updates user, generates OAuth code
-5. Frontend exchanges code with code_verifier
-   POST /v1/api/auth/oauth/exchange
-   Body: { code, codeVerifier }
-   → Backend validates PKCE and returns JWT token
-```
-
-## Setup
+## Local Development
 
 ### Prerequisites
+
 - Java 21+
 - Maven 3.8+
 - Docker & Docker Compose
-- PostgreSQL 15
-- Redis 7
 
-### Initial Setup: Security (Gitleaks)
-
-**First time only** - Install gitleaks to prevent committing secrets:
+### Quick Start
 
 ```bash
-./setup-gitleaks.sh
+# 1. Start Postgres + Redis
+docker compose up -d
+
+# 2. Build commons + all services
+./build-all.sh
+
+# 3. Run services from IntelliJ (or terminal)
+cd auth-service && mvn spring-boot:run
+cd api-gateway && mvn spring-boot:run
+cd execution-service && mvn spring-boot:run
 ```
 
-This installs gitleaks and sets up a pre-commit hook that automatically scans for secrets before every commit.
+All services have safe local defaults - no env vars needed for basic local dev:
+- DB: `codejam/codejam123` on `localhost:5432/codejam_db`
+- Redis: `localhost:6379`
+- JWT: local dev key auto-configured
+- Config Server: optional (`optional:configserver:`)
 
-### Environment Variables
-
-Create a `.env` file (already gitignored) and configure all required variables:
+### Build Script
 
 ```bash
-# JWT Configuration
-JWT_SECRET=your-jwt-secret-key-base64-encoded
-JWT_EXPIRATION=86400000
-
-# Database
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/codejam_db
-SPRING_DATASOURCE_USERNAME=your-db-username
-SPRING_DATASOURCE_PASSWORD=your-db-password
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# Email (for OTP)
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-password
-
-# Frontend URLs
-FRONTEND_URL=http://localhost:3000
-OAUTH_SUCCESS_REDIRECT=http://localhost:3000/auth/callback
-GATEWAY_BASE_URL=http://localhost:8080
+./build-all.sh                           # Build all
+./build-all.sh auth-service api-gateway  # Build specific services
 ```
 
-See `.env` file for complete list of environment variables.
+The script auto-reads the commons version from `auth-service/pom.xml`, sets it on `codejam-commons`, and installs it to the local Maven repo before building services.
 
-### Build
+### Optional: Set env vars for full features
 
-```bash
-# Build commons first (required by other services)
-cd codejam-commons
-mvn clean install
+For Google OAuth and email to work locally, set these in your IntelliJ run config:
 
-# Build auth-service
-cd ../auth-service
-mvn clean install
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - OAuth login
+- `RESEND_API_KEY` - Email (OTP verification)
+- `JWT_SECRET` - Custom JWT key (has a default for dev)
 
-# Build api-gateway
-cd ../api-gateway
-mvn clean install
+## Authentication Flow
+
+### Registration
+```
+POST /v1/api/auth/register → temp token (15 min)
+POST /v1/api/auth/generateOtp → OTP sent to email
+POST /v1/api/auth/validateOtp → full token (7 days)
 ```
 
-### Run with Docker Compose
-
-```bash
-# Start all services (PostgreSQL, Redis, Auth Service)
-docker-compose up -d
-
-# Or start only databases
-docker-compose up -d codejam-postgres codejam-redis
+### Login
+```
+POST /v1/api/auth/login → full token (if verified) or temp token (if not)
 ```
 
-### Run Services Locally
-
-```bash
-# Start databases
-docker-compose up -d codejam-postgres codejam-redis
-
-# Run auth-service
-cd auth-service
-mvn spring-boot:run
-
-# Run api-gateway (in another terminal)
-cd api-gateway
-mvn spring-boot:run
+### OAuth (Google with PKCE)
 ```
+1. Frontend generates PKCE code_verifier + code_challenge
+2. GET /v1/api/auth/oauth2/authorization/google?code_challenge=...
+3. Google OAuth flow → callback with code
+4. POST /v1/api/auth/oauth/exchange { code, codeVerifier } → JWT token
+```
+
+## Code Execution
+
+The execution service runs user code in isolated Docker containers:
+
+- **Languages**: JavaScript, Python, Java (C++, Rust planned)
+- **Sandboxing**: No network, read-only volumes, no privilege escalation
+- **Limits**: 256MB memory, 0.5 CPU, 30s timeout, 50 max processes
+- **Output**: stdout/stderr captured (max 1MB), exit code, execution time
 
 ## API Endpoints
 
-### Public Endpoints
-- `POST /v1/api/auth/register` - Register new user
-- `POST /v1/api/auth/login` - Login with email/password
-- `GET /v1/api/auth/oauth2/authorization/google` - Initiate Google OAuth
-- `GET /v1/api/auth/oauth2/callback/google` - OAuth callback
-- `POST /v1/api/auth/oauth/exchange` - Exchange OAuth code for token
+### Public
+- `POST /v1/api/auth/register` - Register
+- `POST /v1/api/auth/login` - Login
+- `GET /v1/api/auth/oauth2/authorization/google` - Google OAuth
+- `POST /v1/api/auth/oauth/exchange` - Exchange OAuth code
 
-### Protected Endpoints (Require JWT)
-- `POST /v1/api/auth/generateOtp` - Generate OTP (temp token only)
-- `POST /v1/api/auth/validateOtp` - Validate OTP (temp token only)
-- `GET /v1/api/auth/health` - Health check
-
-## Security Features
-
-### JWT Token Types
-- **Temp Token**: 15 minutes expiry, `isEnabled=false`, only allows `/generateOtp` and `/validateOtp`
-- **Full Token**: 7 days expiry, `isEnabled=true`, grants `ROLE_USER` authority
-
-### PKCE for OAuth
-- Frontend generates `code_verifier` and `code_challenge` (S256)
-- Backend validates PKCE during code exchange
-- Prevents authorization code interception attacks
-
-### Email Normalization
-- All emails are normalized to lowercase at request level (DTO setters)
-- Prevents duplicate accounts with different email casing
+### Protected (JWT required)
+- `POST /v1/api/auth/generateOtp` - Generate OTP
+- `POST /v1/api/auth/validateOtp` - Validate OTP
+- `POST /v1/api/execution/run` - Execute code
+- `GET /v1/api/execution/supported-languages` - List languages
 
 ## Project Structure
 
 ```
 codejam-backend/
-├── api-gateway/              # API Gateway service
-│   ├── src/main/java/com/codejam/gateway/
-│   │   ├── filter/          # JWT authentication filter
-│   │   ├── service/         # JWT service
-│   │   └── controller/      # Gateway controllers
-│   └── pom.xml
-├── auth-service/            # Authentication service
-│   ├── src/main/java/com/codejam/auth/
-│   │   ├── config/          # Security, OAuth, Redis configs
-│   │   ├── controller/       # REST controllers
-│   │   ├── service/         # Business logic
-│   │   ├── model/           # JPA entities
-│   │   ├── repository/      # Data access
-│   │   ├── security/        # JWT filter (redundant, gateway handles it)
-│   │   ├── handler/         # OAuth handlers
-│   │   └── dto/             # Request/Response DTOs
-│   └── pom.xml
-├── codejam-commons/         # Shared library
-│   ├── src/main/java/com/codejam/commons/
-│   │   ├── dto/             # BaseResponse
-│   │   ├── exception/       # CustomException
-│   │   └── util/            # RedisService, ObjectUtil, etc.
-│   └── pom.xml
-├── config-server/          # Config Server (optional)
-├── docker-compose.yml       # Docker services
-├── .env                     # Environment variables (not committed)
-└── README.md
+├── api-gateway/                # Spring Cloud Gateway
+│   └── src/.../gateway/
+│       ├── filter/             # JWT auth filter
+│       ├── service/            # JWT service
+│       └── controller/
+├── auth-service/               # Auth microservice
+│   └── src/.../auth/
+│       ├── config/             # Security, OAuth, Redis
+│       ├── controller/         # REST endpoints
+│       ├── service/            # Business logic
+│       ├── model/              # JPA entities
+│       ├── repository/         # Data access
+│       ├── handler/            # OAuth handlers
+│       └── dto/                # Request/Response DTOs
+├── execution-service/          # Code execution
+│   └── src/.../execution/
+│       ├── config/             # Docker, executor config
+│       ├── controller/         # Execution endpoint
+│       ├── service/            # DockerExecutor, CodeExecutor
+│       └── dto/                # CodeSubmission, ExecutionResult
+├── config-server/              # Spring Cloud Config
+├── codejam-commons/            # Shared library
+│   └── src/.../commons/
+│       ├── dto/                # BaseResponse, ErrorResponse
+│       ├── exception/          # CustomException, GlobalHandler
+│       ├── util/               # JwtUtil, RedisService
+│       └── config/             # Security, Redis config
+├── .github/workflows/          # CI/CD pipelines
+├── docker-compose.yml          # Local dev (Postgres + Redis) - gitignored
+├── docker-compose.prod.yml     # Production (all services)
+├── build-all.sh                # Build script
+├── setup-gitleaks.sh           # Secret detection setup
+└── .env                        # Secrets (gitignored)
 ```
 
-## Key Features
+## CI/CD
 
-- **Email/Password Authentication**: Registration with email verification
-- **OTP Verification**: 6-digit OTP sent via email (or static for development)
-- **Google OAuth**: Secure OAuth flow with PKCE
-- **JWT Tokens**: Temp tokens for unverified users, full tokens for verified
-- **Email Normalization**: Case-insensitive email handling
-- **Centralized JWT Validation**: All validation at API Gateway level
-- **Redis Integration**: OTP storage and OAuth code management
+Per-service GitHub Actions workflows - only the changed service gets built and deployed:
 
-## Development
+| Workflow | Trigger | Action |
+|----------|---------|--------|
+| `deploy-auth-service.yml` | `auth-service/**` changes on main | Build + deploy auth-service |
+| `deploy-execution-service.yml` | `execution-service/**` changes | Build + deploy execution-service |
+| `deploy-api-gateway.yml` | `api-gateway/**` changes | Build + deploy api-gateway |
+| `deploy-config-server.yml` | `config-server/**` changes | Build + deploy config-server |
+| `deploy-all.yml` | `docker-compose.prod.yml` changes or manual | Build + deploy all services |
+| `publish-commons.yml` | `commons-v*` tag or manual | Publish commons to GitHub Packages |
 
-### Running Tests
+### Pipeline Flow
+1. Maven build with Java 21
+2. Docker image push to GHCR (`ghcr.io/<owner>/codejam-<service>`)
+3. SSH deploy to DigitalOcean Droplet
+4. `docker compose pull && up -d` (only affected service)
+
+### Updating Commons Version
 ```bash
-mvn test
+# 1. Update version in auth-service/pom.xml (codejam-commons.version property)
+# 2. Update same version in execution-service/pom.xml and api-gateway/pom.xml
+# 3. Tag and push: git tag commons-v1.1.0 && git push origin commons-v1.1.0
 ```
 
-### Code Quality
-- Java 21
-- Spring Boot 3.4.10
-- Maven for dependency management
+## Security
+
+- **Gitleaks**: Pre-commit hook for secret detection (`./setup-gitleaks.sh`)
+- **JWT**: Validated at gateway level, passed as headers to downstream
+- **PKCE**: OAuth code exchange with S256 challenge
+- **Docker Isolation**: Code runs in sandboxed containers with no network
+- **Email Normalization**: Case-insensitive to prevent duplicates
 
 ## License
 
