@@ -13,7 +13,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
     username: ${SPRING_DATASOURCE_USERNAME:codejam}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    password: ${SPRING_DATASOURCE_PASSWORD:codejam123}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

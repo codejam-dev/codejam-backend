@@ -20,6 +20,12 @@ description = "Database Password in Properties"
 regex = '''(?i)(datasource[._-]?password\s*[:=]\s*['\"]?)([^\s'\"]+)'''
 tags = ["database", "password"]
 
+[[rules.allowlists]]
+regexTarget = "line"
+regexes = [
+  '''SPRING_DATASOURCE_PASSWORD''',  # Spring ${SPRING_DATASOURCE_PASSWORD:...} false positive on DATASOURCE_PASSWORD
+]
+
 [[rules]]
 id = "codejam-google-secret"
 description = "Google OAuth Client Secret"
