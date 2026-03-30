@@ -1,7 +1,6 @@
 package com.codejam.execution.config;
 
 import com.codejam.execution.service.CodeExecutor;
-import com.codejam.execution.service.DockerExecutor;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
@@ -66,8 +65,4 @@ public class ExecutorConfig {
         return executor.getThreadPoolExecutor();
     }
 
-    @Bean
-    public CodeExecutor dockerExecutor(DockerClient dockerClient, ExecutorService codeExecutorService) {
-        return new DockerExecutor(dockerClient, microserviceConfig, codeExecutorService);
-    }
 }

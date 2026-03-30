@@ -13,23 +13,54 @@ import org.springframework.context.annotation.Configuration;
 public class MicroserviceConfig {
 
     private ExecutionConfig executor = new ExecutionConfig();
+    private RunHistoryConfig runHistory = new RunHistoryConfig();
 
     @PostConstruct
     public void init() {
-        // Ensure executor is never null
         if (executor == null) {
             executor = new ExecutionConfig();
         }
+        if (runHistory == null) {
+            runHistory = new RunHistoryConfig();
+        }
     }
 
-    /**
-     * Get executor config, ensuring it's never null
-     */
     public ExecutionConfig getExecutor() {
         if (executor == null) {
             executor = new ExecutionConfig();
         }
         return executor;
+    }
+
+    public RunHistoryConfig getRunHistory() {
+        if (runHistory == null) {
+            runHistory = new RunHistoryConfig();
+        }
+        return runHistory;
+    }
+
+    @Data
+    public static class RunHistoryConfig {
+        private int maxRunsPerUser = 10;
+        private int maxCodeLength = 10_000;
+        private int maxOutputLength = 5_000;
+        private int maxErrorLength = 2_000;
+
+        public int getMaxRunsPerUser() {
+            return maxRunsPerUser > 0 ? maxRunsPerUser : 10;
+        }
+
+        public int getMaxCodeLength() {
+            return maxCodeLength > 0 ? maxCodeLength : 10_000;
+        }
+
+        public int getMaxOutputLength() {
+            return maxOutputLength > 0 ? maxOutputLength : 5_000;
+        }
+
+        public int getMaxErrorLength() {
+            return maxErrorLength > 0 ? maxErrorLength : 2_000;
+        }
     }
 
     @Data
