@@ -1,124 +1,19 @@
 #!/bin/bash
-
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-# Force Java 21 for Maven
-export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
-export PATH="$JAVA_HOME/bin:$PATH"
-
-# Store the root directory
-ROOT_DIR=$(pwd)
-
-# Function to build a specific service
-build_service() {
-    local service=$1
-    local emoji=$2
-
-    echo "$emoji Building $service..."
-    cd "$ROOT_DIR/$service" || exit 1
-    mvn clean package -DskipTests -q
-    echo "✅ $service built successfully"
-    echo ""
-}
-
-# Function to show usage
-show_usage() {
-    echo "Usage: ./build-all.sh [service1] [service2] ..."
-    echo ""
-    echo "Available services:"
-    echo "  codejam-commons    - Shared library (always built first)"
-    echo "  auth-service       - Authentication service"
-    echo "  api-gateway        - API Gateway"
-    echo "  execution-service  - Code execution service"
-    echo "  config-server      - Configuration server (optional)"
-    echo ""
-    echo "Examples:"
-    echo "  ./build-all.sh                           # Build all services"
-    echo "  ./build-all.sh auth-service              # Build only auth-service"
-    echo "  ./build-all.sh auth-service api-gateway  # Build multiple services"
-    echo ""
-}
-
-echo "🏗️  Building CodeJam Microservices..."
-echo "📍 Working directory: $ROOT_DIR"
-echo "☕ Java version: $(java -version 2>&1 | head -n 1)"
-echo ""
-
-# Check if help is requested
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-    show_usage
-    exit 0
-fi
-
-# Define all services
-ALL_SERVICES=("auth-service" "api-gateway" "execution-service" "config-server")
-
-# Determine which services to build
-if [ $# -eq 0 ]; then
-    # No arguments - build all services
-    SERVICES_TO_BUILD=("${ALL_SERVICES[@]}")
-    echo "📦 Building all services..."
-else
-    # Arguments provided - build specific services
-    SERVICES_TO_BUILD=("$@")
-    echo "📦 Building specific services: $*"
-fi
-
-echo ""
-
-# Get commons version from auth-service pom.xml (all services use same version)
-COMMONS_VERSION=$(grep -m1 '<codejam-commons.version>' "$ROOT_DIR/auth-service/pom.xml" | sed 's/.*>\(.*\)<.*/\1/')
-echo "📦 Commons version: $COMMONS_VERSION"
-echo ""
-
-# Build codejam-commons with the correct version
-echo "📦 Building codejam-commons..."
-cd "$ROOT_DIR/codejam-commons" || exit 1
-mvn versions:set -DnewVersion="$COMMONS_VERSION" -DgenerateBackupPoms=false -q
-mvn clean install -DskipTests -q
-echo "✅ codejam-commons built successfully"
-echo ""
-
-# Build requested services
-for service in "${SERVICES_TO_BUILD[@]}"; do
-    case $service in
-        auth-service)
-            build_service "auth-service" "🔐"
-            ;;
-        api-gateway)
-            build_service "api-gateway" "🌐"
-            ;;
-        execution-service)
-            build_service "execution-service" "⚡"
-            ;;
-        config-server)
-            build_service "config-server" "⚙️"
-            ;;
-        codejam-commons)
-            # Already built, skip
-            echo "⏭️  codejam-commons already built, skipping..."
-            echo ""
-            ;;
-        *)
-            echo "❌ Unknown service: $service"
-            echo ""
-            show_usage
-            exit 1
-            ;;
-    esac
-done
-
-# Return to root directory
+ROOT_DIR=$(cd "$(dirname "$0")" && pwd)
 cd "$ROOT_DIR"
 
-echo ""
-if [ $# -eq 0 ]; then
-    echo "✅ All services built successfully!"
-else
-    echo "✅ Selected services built successfully!"
+if [[ "${JAVA_HOME:-}" == "" ]] && [[ -d "/opt/homebrew/opt/openjdk@21" ]]; then
+  export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+  export PATH="$JAVA_HOME/bin:$PATH"
 fi
-echo "🚀 Run 'docker-compose up' to start all services"
 
+echo "Building CodeJam monolith (codejam-commons + codejam-app)..."
+echo "Java: $(java -version 2>&1 | head -n 1)"
+echo ""
 
+mvn -q clean install -DskipTests
 
+echo ""
+echo "Done. Fat JAR: codejam-app/target/codejam-app-*.jar"

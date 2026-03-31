@@ -2,7 +2,7 @@ name: Deploy All Services
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'docker-compose.prod.yml'
   workflow_dispatch:
@@ -32,14 +32,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: config-server
-            path: config-server
-          - name: auth-service
-            path: auth-service
-          - name: execution-service
-            path: execution-service
-          - name: api-gateway
-            path: api-gateway
+          - name: app
+            path: codejam-app
 
     steps:
       - uses: actions/checkout@v4
@@ -81,19 +75,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build commons first
-        run: |
-          cd codejam-commons
-          mvn clean install -DskipTests -q
+      - name: Build monolith (parent + commons + app JAR)
+        run: mvn clean install -DskipTests -q
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build service
-        working-directory: ${{ matrix.path }}
-        run: mvn clean package -DskipTests -q
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/login-action@v3
         with:
