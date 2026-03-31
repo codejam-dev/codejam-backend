@@ -10,7 +10,24 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
+    username: ${SPRING_DATASOURCE_USERNAME:codejam}
+    password: ${SPRING_DATASOURCE_PASSWORD:codejam123}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: execution
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
 
 app:
   executor:
@@ -19,6 +36,11 @@ app:
     memory-limit-mb: 256
     cpu-limit: 0.5
     workspace-host-path: ${CODEJAM_WORKSPACE_HOST_PATH:}
+  run-history:
+    max-runs-per-user: ${RUN_HISTORY_MAX_RUNS:10}
+    max-code-length: ${RUN_HISTORY_MAX_CODE_LENGTH:10000}
+    max-output-length: ${RUN_HISTORY_MAX_OUTPUT_LENGTH:5000}
+    max-error-length: ${RUN_HISTORY_MAX_ERROR_LENGTH:2000}
 
 management:
   endpoints:

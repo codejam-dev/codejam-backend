@@ -7,8 +7,9 @@ SQL scripts for initializing and managing CodeJam databases.
 ```
 scripts/
 └── db/
-    ├── 00-init.sql          # Create schemas
-    └── 01-auth-tables.sql   # Auth service tables
+    ├── 00-init.sql             # Create schemas (auth, execution)
+    ├── 01-auth-tables.sql      # Auth service tables
+    └── 02-execution-tables.sql  # Execution service tables (run_history)
 ```
 
 ## Running Scripts
@@ -24,6 +25,9 @@ docker exec -i codejam-postgres psql -U codejam -d codejam_db < scripts/db/00-in
 # 2. Create auth tables
 docker exec -i codejam-postgres psql -U codejam -d codejam_db < scripts/db/01-auth-tables.sql
 
+# 3. Create execution tables
+docker exec -i codejam-postgres psql -U codejam -d codejam_db < scripts/db/02-execution-tables.sql
+
 # Or run all in order:
 for f in scripts/db/*.sql; do
   echo "Running $f..."
@@ -37,6 +41,7 @@ done
 # With local PostgreSQL
 psql -U codejam -d codejam_db -f scripts/db/00-init.sql
 psql -U codejam -d codejam_db -f scripts/db/01-auth-tables.sql
+psql -U codejam -d codejam_db -f scripts/db/02-execution-tables.sql
 
 # With Docker Compose
 docker exec -i codejam-postgres psql -U codejam -d codejam_db < scripts/db/00-init.sql
