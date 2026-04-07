@@ -3,7 +3,10 @@ package com.codejam.auth.service;
 import com.codejam.auth.service.email.provider.EmailProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,8 +18,17 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "email.provider", havingValue = "resend", matchIfMissing = true)
+@Conditional(ResendEmailProvider.OnResend.class)
 public class ResendEmailProvider implements EmailProvider {
+
+    /** Case-insensitive match for {@code email.provider=resend} (default). */
+    static final class OnResend implements Condition {
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            String v = context.getEnvironment().getProperty("email.provider", "resend");
+            return "resend".equalsIgnoreCase(v);
+        }
+    }
 
     private static final String RESEND_URL = "https://api.resend.com/emails";
 
