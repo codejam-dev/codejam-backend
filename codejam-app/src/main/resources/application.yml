@@ -125,6 +125,10 @@ actuator:
     token: ${ACTUATOR_REFRESH_TOKEN:}
 
 management:
+  # Default email is Resend (HTTP); JavaMail still targets spring.mail.host (e.g. Gmail) — SMTP probe is misleading.
+  health:
+    mail:
+      enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
   endpoints:
     web:
       exposure:
