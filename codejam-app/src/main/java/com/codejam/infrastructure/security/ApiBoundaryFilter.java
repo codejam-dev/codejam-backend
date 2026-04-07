@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,8 @@ public class ApiBoundaryFilter extends OncePerRequestFilter {
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/v1/api/auth/register",
             "/v1/api/auth/login",
+            "/v1/api/auth/refresh",
+            "/v1/api/auth/logout",
             "/v1/api/auth/oauth2/authorization",
             "/v1/api/auth/oauth2/callback",
             "/v1/api/auth/oauth/exchange",
@@ -65,6 +68,12 @@ public class ApiBoundaryFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String path = request.getRequestURI();
+
+        // CORS preflight: no Authorization header; Security + CorsConfigurationSource add response headers
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (path.startsWith("/actuator/") && !path.equals("/actuator/health") && !path.startsWith("/actuator/health/")) {
             writeJsonError(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "Actuator endpoints are restricted");

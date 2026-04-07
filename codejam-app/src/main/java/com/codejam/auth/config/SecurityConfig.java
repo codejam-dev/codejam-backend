@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration("authSecurityConfig")
 @EnableWebSecurity
@@ -21,6 +22,7 @@ public class SecurityConfig {
 
     private static final String API_AUTH_PREFIX = "/v1/api/auth";
 
+    private final CorsConfigurationSource corsConfigurationSource;
     private final OAuthSuccessHandler oAuthSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService;
@@ -29,6 +31,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(c -> c.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)

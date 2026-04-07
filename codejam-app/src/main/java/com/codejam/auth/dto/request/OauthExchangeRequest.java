@@ -2,15 +2,16 @@ package com.codejam.auth.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 
 @Data
-@RequiredArgsConstructor
 public class OauthExchangeRequest {
 
     @NotBlank(message = "Authorization code is required")
-    public String code;
+    private String code;
 
     @NotBlank(message = "Code verifier is required")
-    public String codeVerifier;
+    private String codeVerifier;
+
+    @NotBlank(message = "Device ID is required")
+    private String deviceId;
 }

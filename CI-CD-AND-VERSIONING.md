@@ -2,19 +2,17 @@
 
 ## Overview
 
-This project uses a **per-service deployment architecture** with **versioned shared library (codejam-commons)**. Each microservice can be deployed independently, and commons updates are explicitly adopted by services.
+**Current default (monolith branch):** one runnable app **`codejam-app`** plus shared **`codejam-commons`** (Maven reactor) and a separate **`config-server`** image. Production **`docker-compose.prod.yml`** runs **postgres**, **redis**, **config-server**, and **codejam-app** (single API port **8080**).
+
+**Legacy:** Older branches may still have **auth-service**, **execution-service**, and **api-gateway** as separate images; workflows named `deploy-auth-service.yml`, `deploy-api-gateway.yml`, `deploy-execution-service.yml` may remain in `.github/workflows/` for those branches — they are **not** the primary path for the modular monolith.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         GitHub Repository                            │
+│                    codejam-backend (monolith layout)                 │
 ├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  codejam-commons/          → Shared library (versioned: 1.0.0, etc) │
-│  auth-service/             → Independent deployment                  │
-│  execution-service/        → Independent deployment                  │
-│  api-gateway/              → Independent deployment                  │
-│  config-server/            → Independent deployment                  │
-│                                                                      │
+│  codejam-commons/     → Shared library (local mvn install / GH PKG) │
+│  codejam-app/         → Fat JAR + Docker image (main API)           │
+│  config-server/       → Separate Config Server image                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -22,16 +20,14 @@ This project uses a **per-service deployment architecture** with **versioned sha
 
 ## Architecture
 
-### Workflow Files
+### Workflow Files (verify against repo)
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `publish-commons.yml` | Tag `commons-v*` | Publish commons to GitHub Packages |
-| `deploy-auth-service.yml` | Changes in `auth-service/**` | Build & deploy auth-service |
-| `deploy-execution-service.yml` | Changes in `execution-service/**` | Build & deploy execution-service |
-| `deploy-api-gateway.yml` | Changes in `api-gateway/**` | Build & deploy api-gateway |
-| `deploy-config-server.yml` | Changes in `config-server/**` | Build & deploy config-server |
-| `deploy-all.yml` | Changes in `docker-compose-prod.yml` or manual | Deploy all services |
+| Workflow | Typical trigger | Purpose |
+|----------|-----------------|--------|
+| `deploy-all.yml` | Push to `codejam-app/**`, `codejam-commons/**`, `config-server/**`, compose file | Build & push **codejam-app** + **config-server** images; deploy compose to droplet |
+| `deploy-config-server.yml` | Changes in `config-server/**` | Build & push config-server only |
+| `publish-commons.yml` | Tag `commons-v*` | Publish commons to GitHub Packages (if still used) |
+| `deploy-auth-service.yml` etc. | _(legacy)_ | **Obsolete** for monolith — remove or ignore on default branch |
 
 ### How Services Get Commons
 
@@ -94,11 +90,7 @@ cd codejam-backend
 ./build-all.sh
 ```
 
-This script:
-1. Reads `codejam-commons.version` from `auth-service/pom.xml`
-2. Sets that version on `codejam-commons`
-3. Installs commons to `~/.m2/repository`
-4. Builds all services
+This script runs **`mvn clean install`** from the **parent POM**, building **codejam-commons** and **codejam-app** (and installing the reactor artifacts).
 
 ### Running Services
 
@@ -106,13 +98,12 @@ This script:
 # Build everything
 ./build-all.sh
 
-# Run specific services
-cd auth-service && mvn spring-boot:run
-cd api-gateway && mvn spring-boot:run
-# etc.
+# Run the monolith locally
+mvn -pl codejam-app spring-boot:run
 
-# Or use Docker Compose
-docker-compose up
+# Production-like stack (see docker-compose.prod.yml)
+# cp .env.example .env && fill values
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### When You Change Commons Locally
@@ -142,120 +133,71 @@ git push origin commons-v1.0.1
 - Runs `mvn deploy` to GitHub Packages
 - Commons `1.0.1` now available for CI
 
-### Deploying a Service
+### Deploying the monolith
 
-**When:** You push changes to a service directory
+**When:** You push changes under `codejam-app/**`, `codejam-commons/**`, `config-server/**`, or `docker-compose.prod.yml`
 
-```bash
-# Make changes to auth-service
-git add auth-service/
-git commit -m "Add new feature"
-git push
-```
+**What happens (typical):**
+1. **`deploy-all.yml`** runs on `push` (see workflow `paths` and `if` conditions).
+2. Matrix build: **`codejam-app`** image (parent `mvn install` + Docker build from `codejam-app/`) and **`config-server`** image (`mvn package` in `config-server/` + Docker build).
+3. Images push to **GHCR**; deploy job copies compose and runs `docker compose pull && up` on the droplet.
 
-**What happens:**
-1. `deploy-auth-service.yml` triggers (path filter: `auth-service/**`)
-2. Configures Maven `settings.xml` with GitHub Packages credentials
-3. Runs `mvn package` (pulls commons from GitHub Packages)
-4. Builds Docker image
-5. Pushes to `ghcr.io`
-6. SSHs to server and deploys only auth-service
+**Config server only:** `deploy-config-server.yml` on `config-server/**` changes.
 
-### Deploying All Services
+**Legacy per-service workflows** (`deploy-auth-service.yml`, etc.): ignore on monolith branch unless you still maintain old service directories.
 
-**When:** You need to redeploy everything or docker-compose changed
+### Deploying all containers
 
-**Option 1: docker-compose changes**
-```bash
-# Edit docker-compose-prod.yml
-git add docker-compose-prod.yml
-git commit -m "Update docker-compose"
-git push
-# → deploy-all.yml triggers automatically
-```
+**Option 1 — Push**  
+Push to `main`/`master` with changes under the paths watched by `deploy-all.yml`.
 
-**Option 2: Manual trigger**
-1. Go to GitHub Actions
-2. Select "Deploy All Services"
-3. Click "Run workflow"
-4. Check "Force rebuild all service images" if needed
+**Option 2 — Manual dispatch**  
+Actions → **Deploy All Services** → Run workflow; use **force rebuild** when you need fresh images without a matching path change (see workflow inputs).
 
 ---
 
 ## Bumping Commons Version
 
-### Scenario: You fixed a bug in commons and want auth-service to use it
+### Scenario: You fixed a bug in commons (monolith uses reactor parent)
+
+With the **parent POM** linking **`codejam-app`** → **`codejam-commons`** as `${project.version}`, a local **`./build-all.sh`** picks up commons changes immediately. For **GitHub Packages** versioning (if you still publish commons separately):
 
 ```bash
 # 1. Make changes to codejam-commons
-cd codejam-commons
-# ... make changes ...
+# 2. Tag commons-v* and push if using publish-commons.yml
+# 3. If any consumer used external version property, bump it — monolith reactor usually does not need this
 
-# 2. Commit commons changes
-git add codejam-commons/
-git commit -m "Fix bug in JWT validation"
+# 4. Commit and push app + commons together (reactor build)
+git add codejam-commons codejam-app pom.xml
+git commit -m "Fix commons / app"
 git push
-
-# 3. Publish new version
-git tag commons-v1.0.1
-git push origin commons-v1.0.1
-# → Wait for publish-commons.yml to complete
-
-# 4. Update auth-service to use new version
-# Edit auth-service/pom.xml:
-#   <codejam-commons.version>1.0.1</codejam-commons.version>
-
-# 5. Commit and push
-git add auth-service/pom.xml
-git commit -m "Bump commons to 1.0.1 for JWT fix"
-git push
-# → deploy-auth-service.yml triggers and deploys
+# → deploy-all.yml (or your chosen workflow) rebuilds the monolith image
 ```
 
-### Scenario: Rolling out commons update to all services
+### Scenario: Rolling out commons (legacy multi-service layout)
 
-```bash
-# After publishing commons-v1.0.1...
-
-# Update all services at once
-for file in auth-service/pom.xml execution-service/pom.xml api-gateway/pom.xml; do
-  sed -i '' 's/<codejam-commons.version>1.0.0/<codejam-commons.version>1.0.1/' $file
-done
-
-git add */pom.xml
-git commit -m "Bump all services to commons 1.0.1"
-git push
-# → All service workflows trigger in parallel
-```
+_If you still maintain separate service POMs on another branch:_ bump `codejam-commons.version` in each service and deploy each workflow. **On the monolith branch**, commons and app ship in **one** build from the parent POM.
 
 ---
 
-## Benefits of This Architecture
+## Benefits (legacy: per-service + versioned commons)
 
-### 1. Independent Deployments
-- Change auth-service → only auth-service deploys
-- No unnecessary rebuilds of unrelated services
+The following applied when **auth**, **execution**, and **gateway** were **separate** deployables. The **monolith** simplifies this: one image includes commons; trade-offs are **simpler ops** vs **less independent scaling** per concern.
 
-### 2. Controlled Commons Rollout
-- Update commons → doesn't auto-break all services
-- Each service explicitly opts-in to new version
-- Can test new commons on one service before rolling to others
+### 1. Independent Deployments (legacy)
+- Per-service pushes could deploy only that service.
 
-### 3. Easy Rollback
-- Service has issue with new commons?
-- Just revert the version in pom.xml:
-  ```xml
-  <codejam-commons.version>1.0.0</codejam-commons.version>
-  ```
-- Push → deploys with old commons
+### 2. Controlled commons rollout (legacy)
+- Explicit version bumps per service before multi-service adoption.
 
-### 4. Clear Audit Trail
-- Git history shows exactly which commons version each service uses
-- Easy to track when a service adopted a commons change
+### 3. Easy rollback
+- Revert Git / image tag / compose version for **codejam-app** (and **config-server** if needed).
 
-### 5. Faster CI/CD
-- Services deploy in parallel
-- No waiting for unchanged services to build
+### 4. Audit trail
+- Git history + image tags still apply.
+
+### 5. CI/CD
+- **deploy-all** matrix can still build **codejam-app** and **config-server** in parallel.
 
 ---
 

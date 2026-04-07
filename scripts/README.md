@@ -7,10 +7,12 @@ SQL scripts for initializing and managing CodeJam databases.
 ```
 scripts/
 └── db/
-    ├── 00-init.sql             # Create schemas (auth, execution)
-    ├── 01-auth-tables.sql      # Auth service tables
-    └── 02-execution-tables.sql  # Execution service tables (run_history)
+    ├── 00-init.sql              # Create schemas (auth, execution)
+    ├── 01-auth-tables.sql       # Users / auth tables (used by codejam-app)
+    └── 02-execution-tables.sql  # run_history (playground execution)
 ```
+
+These match what the **modular monolith** (`codejam-app`) expects. Hibernate `ddl-auto: update` can create tables too; the scripts are for explicit bootstrap and documentation.
 
 ## Running Scripts
 

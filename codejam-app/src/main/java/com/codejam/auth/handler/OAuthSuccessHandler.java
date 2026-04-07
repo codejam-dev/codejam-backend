@@ -3,7 +3,6 @@ package com.codejam.auth.handler;
 import com.codejam.auth.config.MicroserviceConfig;
 import com.codejam.auth.model.User;
 import com.codejam.auth.repository.UserRepository;
-import com.codejam.auth.service.JwtService;
 import com.codejam.auth.service.OAuthCodeService;
 import com.codejam.commons.util.ObjectUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,7 +25,6 @@ import static com.codejam.auth.util.Constants.SESSION_ATTRIBUTE_CODE_CHALLENGE;
 @RequiredArgsConstructor
 public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtService jwtService;
     private final UserRepository userRepository;
     private final OAuthCodeService oAuthCodeService;
     private final MicroserviceConfig microserviceConfig;
@@ -51,36 +49,30 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth authentication"));
 
-        String token = jwtService.generateToken(user);
         String codeChallenge = (String) request.getSession().getAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE);
 
-        if(ObjectUtils.isNullOrEmpty(codeChallenge)) {
+        if (ObjectUtils.isNullOrEmpty(codeChallenge)) {
             log.error("PKCE code_challenge missing in session for user: {}", email);
             response.sendRedirect(microserviceConfig.getOauth().getSuccessRedirect() + "?error=pkce_required");
             return;
         }
 
-        if(ObjectUtils.isNullOrEmpty(user.getProfileImageUrl())){
+        if (ObjectUtils.isNullOrEmpty(user.getProfileImageUrl())) {
             user.setProfileImageUrl(oAuth2User.getAttribute("picture"));
             userRepository.save(user);
         }
 
-        // Determine avatar: prefer base64 data URL from DB if available, else use external URL
         String avatar = "";
         if (user.getProfileImage() != null && user.getProfileImage().length > 0) {
-            // User has image stored in DB, convert to base64 data URL
             String base64Image = Base64.getEncoder().encodeToString(user.getProfileImage());
-            // Default to JPEG, could be enhanced to detect actual content type
             avatar = "data:image/jpeg;base64," + base64Image;
             log.debug("Using base64 profile image from DB for user: {}, size: {} bytes", user.getEmail(), user.getProfileImage().length);
         } else if (!ObjectUtils.isNullOrEmpty(user.getProfileImageUrl())) {
-            // Fallback to external URL if no backend image
             avatar = user.getProfileImageUrl();
             log.debug("Using external profile image URL for user: {}", user.getEmail());
         }
 
         String code = oAuthCodeService.generateCode(
-                token,
                 user.getEmail(),
                 user.getName() != null ? user.getName() : "",
                 user.getUserId(),
@@ -90,11 +82,11 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
         request.getSession().removeAttribute(SESSION_ATTRIBUTE_CODE_CHALLENGE);
         log.debug("OAuth code generated successfully. Redirecting to frontend. User: {}", normalizedEmail);
-        
+
         String targetUrl = UriComponentsBuilder.fromUriString(microserviceConfig.getOauth().getSuccessRedirect())
                 .queryParam("code", code)
                 .build().toUriString();
-        
+
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

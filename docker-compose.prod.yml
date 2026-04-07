@@ -1,4 +1,4 @@
-x-jvm-common: &jvm-common
+x-jvm-app: &jvm-app
   mem_limit: 1536m
   environment:
     JAVA_TOOL_OPTIONS: >
@@ -6,6 +6,16 @@ x-jvm-common: &jvm-common
       -Xmx1024m
       -XX:+UseG1GC
       -XX:MaxMetaspaceSize=256m
+      -XX:+ExitOnOutOfMemoryError
+
+x-jvm-config: &jvm-config
+  mem_limit: 512m
+  environment:
+    JAVA_TOOL_OPTIONS: >
+      -Xms128m
+      -Xmx384m
+      -XX:+UseG1GC
+      -XX:MaxMetaspaceSize=128m
       -XX:+ExitOnOutOfMemoryError
 
 services:
@@ -55,8 +65,27 @@ services:
       timeout: 5s
       retries: 5
 
+  config-server:
+    <<: *jvm-config
+    image: ghcr.io/${GHCR_OWNER}/codejam-config-server:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: git
+      CONFIG_REPO_URL: ${CONFIG_REPO_URL}
+      CONFIG_GIT_BRANCH: ${CONFIG_GIT_BRANCH:-main}
+      GIT_USERNAME: ${GIT_USERNAME}
+      GIT_PASSWORD: ${GIT_PASSWORD}
+    networks:
+      - codejam-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8888/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   codejam-app:
-    <<: *jvm-common
+    <<: *jvm-app
     image: ghcr.io/${GHCR_OWNER}/codejam-codejam-app:${IMAGE_TAG}
     restart: unless-stopped
     depends_on:
@@ -64,11 +93,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      config-server:
+        condition: service_healthy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/codejam-workspace:/tmp/codejam-workspace
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      CONFIG_SERVER_URL: http://config-server:8888
       SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -76,6 +108,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      ACCESS_TOKEN_EXPIRY_MS: ${ACCESS_TOKEN_EXPIRY_MS:-900000}
+      REFRESH_TOKEN_EXPIRY_MS: ${REFRESH_TOKEN_EXPIRY_MS:-604800000}
+      REFRESH_COOKIE_SECURE: "true"
+      REFRESH_COOKIE_SAME_SITE: None
       CODEJAM_WORKSPACE_HOST_PATH: /tmp/codejam-workspace
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER}

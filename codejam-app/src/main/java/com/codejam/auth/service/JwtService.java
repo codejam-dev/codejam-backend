@@ -5,6 +5,7 @@ import com.codejam.auth.model.User;
 import com.codejam.commons.constant.JwtScopeConstants;
 import com.codejam.commons.util.JwtUtil;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -26,15 +27,15 @@ public class JwtService {
 
     private final MicroserviceConfig microserviceConfig;
 
-    private static final long TEMP_TOKEN_EXPIRATION = 15 * 60 * 1000;
+    public static final String TOKEN_USE_ACCESS = "access";
+    public static final String TOKEN_USE_REFRESH = "refresh";
 
-    // Delegate to JwtUtil for parsing
     public String extractEmail(String token) {
         return JwtUtil.extractEmail(token, microserviceConfig.getJwtSecret());
     }
 
     public String extractUserId(String token) {
-        return JwtUtil.extractUserId(token, microserviceConfig.getJwtSecret());
+        return JwtUtil.extractUserIdFromClaims(token, microserviceConfig.getJwtSecret());
     }
 
     @Deprecated
@@ -46,52 +47,114 @@ public class JwtService {
         return JwtUtil.extractScopes(token, microserviceConfig.getJwtSecret());
     }
 
+    public String extractJti(String token) {
+        return JwtUtil.extractJti(token, microserviceConfig.getJwtSecret());
+    }
+
+    public String extractDeviceIdFromAccessToken(String token) {
+        return JwtUtil.extractDeviceId(token, microserviceConfig.getJwtSecret());
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         Claims claims = JwtUtil.parseToken(token, microserviceConfig.getJwtSecret());
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(User user) {
-        return buildToken(user, microserviceConfig.getJwtExpiration());
+    /**
+     * Short-lived access JWT for verified users (API boundary validates with jwt.secret).
+     */
+    public String generateAccessToken(User user, String deviceId) {
+        List<String> scopes = determineScopes(user);
+        return buildAccessToken(user, deviceId, microserviceConfig.getAccessTokenExpiryMs(), scopes);
     }
 
+    /**
+     * Temp access JWT for unverified users (OTP flows only at API boundary).
+     */
     public String generateTempToken(User user) {
-        return buildToken(user, TEMP_TOKEN_EXPIRATION);
+        List<String> scopes = determineScopes(user);
+        return buildAccessToken(user, null, microserviceConfig.getAccessTokenExpiryMs(), scopes);
     }
 
-    // Removed generateFullToken - use generateToken() instead
+    /**
+     * Refresh JWT (signed with jwt.refresh.secret; not accepted for API routes).
+     */
+    public String generateRefreshToken(User user, String deviceId, String parentJti) {
+        String jti = UUID.randomUUID().toString();
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("userId", user.getUserId());
+        claims.put("deviceId", deviceId);
+        claims.put("token_use", TOKEN_USE_REFRESH);
+        if (parentJti != null && !parentJti.isEmpty()) {
+            claims.put("parentJti", parentJti);
+        }
 
-    private String buildToken(User user, long expiration, List<String> scopes) {
+        return builder()
+                .id(jti)
+                .claims(claims)
+                .subject(user.getUserId())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + microserviceConfig.getRefreshTokenExpiryMs()))
+                .signWith(getRefreshSignInKey())
+                .compact();
+    }
+
+    public boolean isRefreshTokenWellFormed(String token) {
+        try {
+            Claims c = JwtUtil.parseToken(token, microserviceConfig.getJwtRefreshSecret());
+            return TOKEN_USE_REFRESH.equals(c.get("token_use", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public Claims parseRefreshTokenClaims(String token) {
+        return JwtUtil.parseToken(token, microserviceConfig.getJwtRefreshSecret());
+    }
+
+    public String extractRefreshJti(String token) {
+        return JwtUtil.extractJti(token, microserviceConfig.getJwtRefreshSecret());
+    }
+
+    public String extractRefreshUserId(String token) {
+        return JwtUtil.parseToken(token, microserviceConfig.getJwtRefreshSecret()).get("userId", String.class);
+    }
+
+    public String extractRefreshDeviceId(String token) {
+        return JwtUtil.parseToken(token, microserviceConfig.getJwtRefreshSecret()).get("deviceId", String.class);
+    }
+
+    /**
+     * @deprecated Use {@link #generateAccessToken(User, String)} for verified sessions.
+     */
+    @Deprecated
+    public String generateToken(User user) {
+        return generateAccessToken(user, null);
+    }
+
+    private String buildAccessToken(User user, String deviceId, long expirationMs, List<String> scopes) {
+        String jti = UUID.randomUUID().toString();
         Map<String, Object> claimsMap = new java.util.HashMap<>();
         claimsMap.put("userId", user.getUserId());
         claimsMap.put("email", user.getEmail());
         claimsMap.put("name", user.getName());
         claimsMap.put("isEnabled", user.isEnabled());
         claimsMap.put("scope", scopes);
-        
+        claimsMap.put("token_use", TOKEN_USE_ACCESS);
+        if (deviceId != null && !deviceId.isEmpty()) {
+            claimsMap.put("deviceId", deviceId);
+        }
+
         return builder()
-                .id(UUID.randomUUID().toString())
+                .id(jti)
                 .claims(claimsMap)
                 .subject(user.getEmail())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSignInKey())
                 .compact();
     }
-    
-    /**
-     * Build token with default scopes based on user enabled status.
-     */
-    private String buildToken(User user, long expiration) {
-        List<String> scopes = determineScopes(user);
-        return buildToken(user, expiration, scopes);
-    }
-    
-    /**
-     * Determine scopes based on user state.
-     * - Temp tokens (unverified users): Only OTP scopes
-     * - Full tokens (verified users): Full API access
-     */
+
     private List<String> determineScopes(User user) {
         List<String> scopes = new ArrayList<>();
         if (user.isEnabled()) {
@@ -109,25 +172,36 @@ public class JwtService {
         return (email.equals(user.getEmail())) && JwtUtil.isTokenValid(token, microserviceConfig.getJwtSecret());
     }
 
-    // Simple token validation - checks if token is valid (not expired and properly signed)
     public boolean isTokenValid(String token) {
-        return JwtUtil.isTokenValid(token, microserviceConfig.getJwtSecret());
+        try {
+            Claims c = JwtUtil.parseToken(token, microserviceConfig.getJwtSecret());
+            String use = c.get("token_use", String.class);
+            if (use != null && !TOKEN_USE_ACCESS.equals(use)) {
+                return false;
+            }
+            return JwtUtil.isTokenValid(token, microserviceConfig.getJwtSecret());
+        } catch (JwtException e) {
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtSecret());
         return Keys.hmacShaKeyFor(keyBytes);
     }
-    
-    // Remove generateFullToken - it's identical to generateToken
-    // Use generateToken() for full tokens
 
-    /**
-     * Extract expiration time in seconds from the token
-     * @param token the JWT token
-     * @return expiration time in seconds
-     */
+    private SecretKey getRefreshSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(microserviceConfig.getJwtRefreshSecret());
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
     public long extractExpirationTime(String token) {
         return JwtUtil.extractExpirationTime(token, microserviceConfig.getJwtSecret());
+    }
+
+    public long extractRefreshExpirationTimeSeconds(String token) {
+        return JwtUtil.extractExpirationTime(token, microserviceConfig.getJwtRefreshSecret());
     }
 }

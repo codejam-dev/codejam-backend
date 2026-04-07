@@ -11,6 +11,9 @@ public class LoginRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
+    @NotBlank(message = "Device ID is required")
+    private String deviceId;
+
     public void setEmail(String email) {
         this.email = email != null ? email.trim().toLowerCase() : null;
     }

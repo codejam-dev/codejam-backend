@@ -104,15 +104,27 @@ public class JwtUtil {
      * Prefer the {@code userId} JWT claim; falls back to subject for older tokens.
      */
     public static String extractUserIdClaim(String token, String jwtSecret) {
+        return extractUserIdFromClaims(token, jwtSecret);
+    }
+
+    /**
+     * Extract user identifier: prefers {@code userId} claim, else subject (legacy: email).
+     */
+    public static String extractUserIdFromClaims(String token, String jwtSecret) {
         return extractClaim(token, jwtSecret, claims -> {
             String uid = claims.get("userId", String.class);
             return uid != null && !uid.isBlank() ? uid : claims.getSubject();
         });
     }
 
-    /**
-     * Extract email from token.
-     */
+    public static String extractJti(String token, String jwtSecret) {
+        return extractClaim(token, jwtSecret, Claims::getId);
+    }
+
+    public static String extractDeviceId(String token, String jwtSecret) {
+        return extractClaim(token, jwtSecret, claims -> claims.get("deviceId", String.class));
+    }
+
     public static String extractEmail(String token, String jwtSecret) {
         return extractClaim(token, jwtSecret, claims -> claims.get("email", String.class));
     }

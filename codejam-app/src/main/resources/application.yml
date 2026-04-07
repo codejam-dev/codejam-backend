@@ -4,9 +4,22 @@ server:
 jwt:
   secret: ${JWT_SECRET:codejam-local-dev-secret-key-change-in-production}
   expiration: ${JWT_EXPIRATION:86400000}
+  refresh:
+    secret: ${JWT_REFRESH_SECRET:}
+
+access:
+  token:
+    expiry: ${ACCESS_TOKEN_EXPIRY_MS:900000}
+
+refresh:
+  token:
+    expiry: ${REFRESH_TOKEN_EXPIRY_MS:604800000}
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  refresh-cookie:
+    secure: ${REFRESH_COOKIE_SECURE:false}
+    same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
   password:
     resetTokenExpiration: ${RESET_TOKEN_EXPIRATION:3600}
   oauth:
@@ -35,6 +48,15 @@ app:
 spring:
   application:
     name: codejam-app
+  # Config Server client is off unless profile "cloud-config" is active (avoids
+  # "No spring.config.import property has been defined" when running locally).
+  cloud:
+    config:
+      enabled: false
+  profiles:
+    group:
+      prod:
+        - cloud-config
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/codejam_db}
     username: ${SPRING_DATASOURCE_USERNAME:codejam}
@@ -126,5 +148,8 @@ management:
 spring:
   config:
     activate:
-      on-profile: config-server
+      on-profile: cloud-config
     import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    config:
+      enabled: true

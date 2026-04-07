@@ -28,6 +28,23 @@ public class MicroserviceConfig {
     @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
+    @Value("${jwt.refresh.secret:}")
+    private String jwtRefreshSecret;
+
+    @Value("${access.token.expiry:900000}")
+    private long accessTokenExpiryMs;
+
+    @Value("${refresh.token.expiry:604800000}")
+    private long refreshTokenExpiryMs;
+
+    /** HTTPS only in prod; set false for local http:// */
+    @Value("${app.refresh-cookie.secure:true}")
+    private boolean refreshCookieSecure;
+
+    /** Lax for local dev; None for cross-site + Secure cookies */
+    @Value("${app.refresh-cookie.same-site:None}")
+    private String refreshCookieSameSite;
+
     @Value("${spring.mail.username:}")
     private String mailUsername;
 
@@ -47,6 +64,12 @@ public class MicroserviceConfig {
     public void init() {
         if (jwtSecret != null) {
             jwtSecret = jwtSecret.trim();
+        }
+        if (jwtRefreshSecret != null) {
+            jwtRefreshSecret = jwtRefreshSecret.trim();
+        }
+        if (jwtRefreshSecret == null || jwtRefreshSecret.isEmpty()) {
+            jwtRefreshSecret = jwtSecret;
         }
         if (executor == null) {
             executor = new ExecutionConfig();

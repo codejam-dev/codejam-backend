@@ -20,12 +20,6 @@ import static com.codejam.auth.util.Constants.*;
 
 /**
  * Production-grade OAuth Code Service with mandatory PKCE validation.
- * SECURITY FEATURES:
- * - Single-use codes (deleted after exchange)
- * - 5-minute expiration
- * - Mandatory PKCE validation (S256 only)
- * - Secure random code generation
- * - Cryptographic challenge verification
  */
 @Slf4j
 @Service
@@ -35,20 +29,11 @@ public class OAuthCodeService {
     private final RedisService redisService;
     private final SecureRandom secureRandom;
     private final proxyUtils proxyUtils;
+
     /**
-     * Generates a secure random code and stores OAuth data in Redis with PKCE challenge.
-     *
-     * @param token JWT token
-     * @param email User email
-     * @param name User name
-     * @param userId User ID
-     * @param avatar Profile image URL (optional)
-     * @param codeChallenge PKCE code challenge (SHA256 hash of code_verifier) - REQUIRED
-     * @return OAuth code that can be exchanged for token
-     * @throws CustomException if codeChallenge is missing (PKCE is mandatory)
+     * Generates a secure random code and stores OAuth user payload in Redis with PKCE challenge.
      */
     public String generateCode(
-            String token,
             String email,
             String name,
             String userId,
@@ -74,7 +59,6 @@ public class OAuthCodeService {
 
         String code = generateSecureCode();
         OAuthCodeResponse oauthData = OAuthCodeResponse.builder()
-                .token(token)
                 .email(email)
                 .name(name)
                 .userId(userId)
@@ -88,14 +72,6 @@ public class OAuthCodeService {
         return code;
     }
 
-    /**
-     * Exchanges an OAuth code for user data and token.
-     * MANDATORY PKCE validation using S256 (SHA256).
-     *
-     * @param request PKCE code verifier (plain text, sent by frontend) - REQUIRED
-     * @return OAuthCodeResponse with token and user data
-     * @throws CustomException if code is invalid, expired, or PKCE validation fails
-     */
     public OAuthCodeResponse exchangeCode(OauthExchangeRequest request) {
 
         if (!isValidCodeVerifier(request.getCodeVerifier())) {
@@ -149,16 +125,6 @@ public class OAuthCodeService {
         return oauthData;
     }
 
-    /**
-     * Computes PKCE code challenge from code verifier using S256 (SHA256).
-     * ALGORITHM (RFC 7636):
-     * 1. Hash code_verifier using SHA-256
-     * 2. Encode hash as Base64 URL-safe (no padding)
-     *
-     * @param codeVerifier The plain text code verifier (43-128 characters)
-     * @return Base64 URL-safe encoded SHA256 hash (code challenge)
-     * @throws RuntimeException if hashing fails
-     */
     private String computeCodeChallenge(String codeVerifier) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -170,35 +136,20 @@ public class OAuthCodeService {
         }
     }
 
-    /**
-     * Validates code_challenge format according to RFC 7636.
-     * - Must be Base64 URL-safe encoded
-     * - Length: 43-128 characters
-     */
     private boolean isValidCodeChallenge(String codeChallenge) {
         if (codeChallenge == null || codeChallenge.length() < 43 || codeChallenge.length() > 128) {
             return false;
         }
-        // Base64 URL-safe: A-Z, a-z, 0-9, -, _
         return codeChallenge.matches("^[A-Za-z0-9_-]+$");
     }
 
-    /**
-     * Validates code_verifier format according to RFC 7636.
-     * - Must be URL-safe
-     * - Length: 43-128 characters
-     */
     private boolean isValidCodeVerifier(String codeVerifier) {
         if (codeVerifier == null || codeVerifier.length() < 43 || codeVerifier.length() > 128) {
             return false;
         }
-        // URL-safe characters: A-Z, a-z, 0-9, -, ., _, ~
         return codeVerifier.matches("^[A-Za-z0-9._~-]+$");
     }
 
-    /**
-     * Generates a secure random code (32 characters, alphanumeric).
-     */
     private String generateSecureCode() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder code = new StringBuilder(32);
@@ -207,5 +158,4 @@ public class OAuthCodeService {
         }
         return code.toString();
     }
-
 }

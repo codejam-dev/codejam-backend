@@ -14,5 +14,9 @@ public class Constants {
     public static final String SESSION_ATTRIBUTE_CODE_CHALLENGE = "oauth_code_challenge";
     public static final String OAUTH_CODE_REDIS_PREFIX = "OAUTH_CODE";
     public static final long OAUTH_CODE_EXPIRY = 5 * 60; // 5 minutes
+
+    public static final String COOKIE_REFRESH_TOKEN = "refresh_token";
+    /** Browser path for refresh cookie (must cover /refresh and /logout). */
+    public static final String REFRESH_COOKIE_PATH = "/v1/api/auth";
 }
 

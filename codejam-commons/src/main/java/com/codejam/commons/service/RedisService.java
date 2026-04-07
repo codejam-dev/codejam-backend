@@ -1,6 +1,7 @@
 package com.codejam.commons.service;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.lang.Nullable;
 
 import java.util.Collection;
@@ -74,6 +75,23 @@ public class RedisService {
 
     public Boolean setIfAbsent(String key, String value, long expirationInSeconds) {
         return redisTemplate.opsForValue().setIfAbsent(key, value, expirationInSeconds, TimeUnit.SECONDS);
+    }
+
+    public Long setAdd(String key, String value) {
+        SetOperations<String, String> ops = redisTemplate.opsForSet();
+        return ops.add(key, value);
+    }
+
+    public Long setRemove(String key, String value) {
+        return redisTemplate.opsForSet().remove(key, value);
+    }
+
+    public Set<String> setMembers(String key) {
+        return redisTemplate.opsForSet().members(key);
+    }
+
+    public void deleteSet(String key) {
+        redisTemplate.delete(key);
     }
 }
 

@@ -14,6 +14,9 @@ public class ValidateOtpRequest {
     @NotBlank(message = "OTP is required")
     private String otp;
 
+    @NotBlank(message = "Device ID is required")
+    private String deviceId;
+
     public void setEmail(String email) {
         this.email = email != null ? email.trim().toLowerCase() : null;
     }

@@ -5,6 +5,10 @@ on:
     branches: [main, master]
     paths:
       - 'docker-compose.prod.yml'
+      - 'codejam-app/**'
+      - 'codejam-commons/**'
+      - 'config-server/**'
+      - 'pom.xml'
   workflow_dispatch:
     inputs:
       force_rebuild:
@@ -23,7 +27,7 @@ env:
 
 jobs:
   build-services:
-    if: github.event.inputs.force_rebuild == 'true'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_rebuild == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,8 +36,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: app
+          - name: codejam-app
             path: codejam-app
+            build: monolith
+          - name: config-server
+            path: config-server
+            build: standalone
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +84,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build monolith (parent + commons + app JAR)
+        if: matrix.build == 'monolith'
         run: mvn clean install -DskipTests -q
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build config-server JAR
+        if: matrix.build == 'standalone'
+        working-directory: ${{ matrix.path }}
+        run: mvn clean package -DskipTests -q
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -99,7 +115,7 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.path }}
+          context: ./${{ matrix.path }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
